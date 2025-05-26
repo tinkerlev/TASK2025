@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>כלי חילוץ וניהול משימות מסיכומי ישיבות - גרסה משופרת</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .upload-section {
+            padding: 40px;
+            text-align: center;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            background: white;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f8f7ff;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .upload-area.dragover {
+            background: #e8ebff;
+            border-color: #764ba2;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-label {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        .upload-label:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.3);
+        }
+
+        .processing {
+            padding: 20px;
+            text-align: center;
+            display: none;
+        }
+        
+        .processing-message {
+            margin-top:10px;
+            color: #495057;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results-section {
+            padding: 40px;
+            display: none;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px; 
+            flex-wrap: wrap; 
+        }
+
+        .results-header h2 {
+            color: #333;
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+        
+        .filters-section {
+            display: none; 
+            margin-bottom: 20px; 
+            padding: 15px; 
+            background: #e9ecef; 
+            border-radius: 8px; 
+            display: flex; 
+            gap: 15px; 
+            align-items: center; 
+            flex-wrap: wrap;
+            border: 1px solid #dee2e6;
+        }
+
+        .filters-section h4 {
+            margin:0 10px 0 0;
+            font-size: 1.1em;
+            color: #495057;
+        }
+        
+        .filters-section label {
+            font-size: 0.95em;
+            color: #495057;
+            margin-left: 5px;
+        }
+        
+        .filters-section select, .filters-section button {
+            padding: 8px 12px; 
+            border-radius: 6px; 
+            border: 1px solid #ced4da;
+            font-size: 0.95em;
+        }
+        
+        .filters-section button {
+            background-color: #667eea;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        .filters-section button:hover {
+            background-color: #5a67d8;
+        }
+        
+        .filters-section button.clear { 
+            background-color: #6c757d;
+        }
+        
+        .filters-section button.clear:hover {
+            background-color: #5a6268;
+        }
+
+        .export-import-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .export-import-section button { 
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+        
+        .btn-action {
+            padding: 6px 10px;
+            font-size: 0.9em;
+            margin-left: 4px;
+        }
+        
+        .btn-calendar { background-color: #28a745; color: white; }
+        .btn-calendar:hover { background-color: #218838; }
+        .btn-delete { background-color: #dc3545; color: white; }
+        .btn-delete:hover { background-color: #c82333; }
+        .btn-reminder { background-color: #17a2b8; color: white; }
+        .btn-reminder:hover { background-color: #138496; }
+        .btn-export { background-color: #20c997; color: white; } 
+        .btn-export:hover { background-color: #1ba77e; }
+        .btn-import { background-color: #fd7e14; color: white; } 
+        .btn-import:hover { background-color: #e56b00; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-danger:hover { background-color: #c82333; }
+
+        
+        .btn-priority { border: 1px solid #ccc; color: #333; background-color: #f8f9fa; }
+        .btn-priority.priority-low { background-color: #e6ffed; border-color: #a3e9a4; color: #155724;}
+        .btn-priority.priority-medium { background-color: #fff3cd; border-color: #ffeeba; color: #856404;}
+        .btn-priority.priority-high { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24;}
+        .btn-priority:hover { opacity: 0.8; }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .tasks-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+        }
+        
+        .tasks-table:last-child {
+            margin-bottom: 0;
+        }
+
+        .tasks-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: right;
+            font-weight: 600;
+            font-size: 1em;
+        }
+
+        .tasks-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e9ecef;
+            text-align: right;
+            vertical-align: top;
+        }
+        
+        .tasks-table td.action-cell {
+            text-align: center;
+            white-space: nowrap;
+        }
+        
+        .tasks-table tr.priority-low { background-color: #e6ffed !important; }
+        .tasks-table tr.priority-medium { background-color: #fff3cd !important; }
+        .tasks-table tr.priority-high { background-color: #f8d7da !important; }
+        .tasks-table tr.priority-low:hover { background-color: #d4f8e0 !important; }
+        .tasks-table tr.priority-medium:hover { background-color: #ffeeba !important; }
+        .tasks-table tr.priority-high:hover { background-color: #f5c6cb !important; }
+        .tasks-table tr.duplicate-task { opacity: 0.6; } 
+
+        .tasks-table tr:hover {
+            background: #f8f7ff;
+        }
+
+        .tasks-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .task-number {
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+        }
+
+        .section-name {
+            color: #495057;
+            font-weight: 500;
+        }
+        
+        .document-type-label {
+            color: #6c757d;
+            font-size: 0.85em;
+            font-style: italic;
+            display: block;
+            margin-top: 3px;
+        }
+
+        .task-description {
+            color: #212529;
+            line-height: 1.6;
+        }
+
+        .responsible {
+            color: #764ba2;
+            font-weight: 500;
+        }
+
+        .timeline {
+            color: #28a745;
+            font-weight: 500;
+        }
+        
+        .protocol-date-cell {
+            color: #4a5568;
+            font-size: 0.9em;
+        }
+
+        .no-date {
+            color: #dc3545;
+            font-style: italic;
+        }
+
+        .duplicate-indicator { 
+            color: #e53e3e; 
+            font-size: 0.8em;
+            margin-left: 5px; 
+        }
+
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 40px;
+            border: 1px solid #f5c6cb;
+            display: none;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 40px;
+            border: 1px solid #c3e6cb;
+            display: none;
+        }
+
+        .file-info {
+            background: #e8ebff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .task-count {
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+
+        /* Statistics Dashboard */
+        .stats-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .stat-card h4 {
+            color: #495057;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+
+        .stat-card .value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .debug-section {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 40px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            display: none;
+        }
+
+        .debug-section h3 {
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .debug-content {
+            font-family: monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            color: #495057;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .table-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            .header h1 { font-size: 1.8em; }
+            .upload-section, .results-section { padding: 20px; }
+            .filters-section { flex-direction: column; gap: 10px; align-items: stretch; }
+            .filters-section div { display: flex; flex-direction: column; }
+            .filters-section label { margin-bottom: 5px; }
+            .filters-section select, .filters-section button { width: 100%; }
+            .tasks-table { font-size: 0.9em; }
+            .tasks-table th, .tasks-table td { padding: 10px; }
+            .action-buttons { flex-direction: column; width: 100%; }
+            .btn { width: 100%; justify-content: center; }
+            .stats-dashboard { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 כלי חילוץ וניהול משימות מסיכומי ישיבות</h1>
+            <p>העלה קובץ Word (או מספר קבצים) לחילוץ אוטומטי של טבלת משימות</p>
+            <p style="font-size: 0.9em; margin-top: 5px; opacity: 0.8;">תומך בסיכומי ישיבות הנהלה וישיבות מטה</p>
+        </div>
+
+        <div class="upload-section" id="uploadSection">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📄</div>
+                <h3>גרור קבצים לכאן או לחץ לבחירה</h3>
+                <p style="margin-top: 10px; color: #666;">קבצים נתמכים: .docx</p>
+                <input type="file" id="fileInput" class="file-input" accept=".docx" multiple>
+                <label for="fileInput" class="upload-label">בחר קבצים</label>
+            </div>
+        </div>
+
+        <div class="processing" id="processing">
+            <div class="spinner"></div>
+            <h3>מעבד קבצים...</h3>
+            <p id="processingMessage" class="processing-message"></p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+
+        <div class="debug-section" id="debugSection">
+            <h3>מידע לאיתור תקלות:</h3>
+            <div class="debug-content" id="debugContent"></div>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <div class="results-header">
+                <h2>משימות שחולצו</h2>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="copyToClipboard()">
+                        📋 העתק לזיכרון
+                    </button>
+                    <button class="btn btn-secondary" onclick="switchToUploadView()">
+                        🔄 הוסף קבצים נוספים
+                    </button>
+                    <button class="btn btn-danger" onclick="confirmClearAllData()">
+                        🗑️ נקה הכל
+                    </button>
+                </div>
+            </div>
+
+            <div class="stats-dashboard" id="statsDashboard">
+                <div class="stat-card">
+                    <h4>סה"כ משימות</h4>
+                    <div class="value" id="statTotal">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>משימות עם תעדוף</h4>
+                    <div class="value" id="statPrioritized">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>משימות כפולות</h4>
+                    <div class="value" id="statDuplicates">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>אחראים שונים</h4>
+                    <div class="value" id="statResponsibles">0</div>
+                </div>
+            </div>
+
+            <div class="export-import-section">
+                <button class="btn-export" onclick="exportToExcel()"> 
+                    📊 ייצא ל-CSV
+                </button>
+                <button class="btn-export" onclick="exportToJSON()">
+                    💾 שמור כ-JSON
+                </button>
+                <button class="btn-import" onclick="document.getElementById('importFileInput').click()">
+                    📂 טען מקובץ JSON
+                </button>
+                <input type="file" id="importFileInput" style="display: none;" accept=".json" onchange="importFromJSON(event)">
+            </div>
+
+            <div class="filters-section" id="filtersSection">
+                <h4>סנן תצוגה:</h4>
+                <div>
+                    <label for="filterResponsible">לפי אחראי:</label>
+                    <select id="filterResponsible" onchange="applyFilters()">
+                        <option value="all">הכל</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="filterSection">לפי סעיף/נושא:</label>
+                    <select id="filterSection" onchange="applyFilters()">
+                        <option value="all">הכל</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="filterTimeline">לפי לוח זמנים:</label>
+                    <select id="filterTimeline" onchange="applyFilters()">
+                        <option value="all">הכל</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="filterProtocolDate">לפי תאריך פרוטוקול:</label>
+                    <select id="filterProtocolDate" onchange="applyFilters()">
+                        <option value="all">הכל</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="filterPriority">לפי תעדוף:</label>
+                    <select id="filterPriority" onchange="applyFilters()">
+                        <option value="all">הכל</option>
+                        <option value="3">גבוה</option>
+                        <option value="2">בינוני</option>
+                        <option value="1">נמוך</option>
+                        <option value="0">ללא</option>
+                    </select>
+                </div>
+                <button onclick="clearFilters()" class="clear">נקה סינונים</button>
+            </div>
+            
+            <div class="file-info" id="fileInfo"></div>
+
+            <div id="divStaffMeetingTasks" style="display:none;">
+                <h3 class="table-title">סיכומי ישיבות מטה</h3>
+                <table class="tasks-table" id="tasksTableStaffMeeting">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%;">מס' כללי</th>
+                            <th style="width: 18%;">נושא</th>
+                            <th style="width: 22%;">משימה</th>
+                            <th style="width: 12%;">אחראי</th>
+                            <th style="width: 10%;">תאריך פרוטוקול</th>
+                            <th style="width: 23%;">פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasksTableBodyStaffMeeting">
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="divManagementTasks" style="display:none;">
+                <h3 class="table-title">סיכומי ישיבות הנהלה</h3>
+                <table class="tasks-table" id="tasksTableManagement">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%;">מס' כללי</th>
+                            <th style="width: 12%;">סעיף</th>
+                            <th style="width: 18%;">החלטה/המשך טיפול</th>
+                            <th style="width: 10%;">אחראי</th>
+                            <th style="width: 10%;">לוח זמנים</th>
+                            <th style="width: 10%;">תאריך פרוטוקול</th>
+                            <th style="width: 25%;">פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasksTableBodyManagement">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allExtractedTasks = [];
+        let lastProcessedFileNames = [];
+        let currentFilters = { responsible: 'all', section: 'all', timeline: 'all', protocolDate: 'all', priority: 'all' };
+        let nextGlobalTaskId = 1;
+
+        const PRIORITY_LEVELS = {
+            NONE: 0,
+            LOW: 1,
+            MEDIUM: 2,
+            HIGH: 3
+        };
+        const PRIORITY_TEXT = {
+            [PRIORITY_LEVELS.NONE]: "⭐ תעדף",
+            [PRIORITY_LEVELS.LOW]: "⭐ נמוך",
+            [PRIORITY_LEVELS.MEDIUM]: "⭐⭐ בינוני",
+            [PRIORITY_LEVELS.HIGH]: "⭐⭐⭐ גבוה"
+        };
+        const PRIORITY_CLASS = {
+            [PRIORITY_LEVELS.NONE]: "",
+            [PRIORITY_LEVELS.LOW]: "priority-low",
+            [PRIORITY_LEVELS.MEDIUM]: "priority-medium",
+            [PRIORITY_LEVELS.HIGH]: "priority-high"
+        };
+
+        // File handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const processingMessageElement = document.getElementById('processingMessage');
+        
+        uploadArea.addEventListener('click', (e) => {
+            if (e.target.closest('.upload-label')) {
+                return;
+            }
+            fileInput.click();
+        });
+
+        uploadArea.addEventListener('dragover', (e) => { 
+            e.preventDefault(); 
+            uploadArea.classList.add('dragover'); 
+        });
+        
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) handleFiles(files);
+        });
+        
+        fileInput.addEventListener('change', (e) => { 
+            if (e.target.files.length > 0) handleFiles(e.target.files); 
+        });
+
+        async function handleFiles(files) {
+            showProcessing();
+            hideMessages();
+            document.getElementById('debugSection').style.display = 'none';
+            document.getElementById('debugContent').textContent = '';
+            
+            lastProcessedFileNames = [];
+            let validFilesProcessedCount = 0;
+            let totalTasksFromBatch = 0;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                processingMessageElement.textContent = `מעבד קובץ ${i + 1} מתוך ${files.length}: ${file.name}`;
+                
+                if (!file.name.endsWith('.docx')) {
+                    showError(`קובץ '${file.name}' אינו נתמך (נדרש .docx). מדלג.`);
+                    showDebug(`Skipped non-docx file: ${file.name}`);
+                    continue;
+                }
+                
+                lastProcessedFileNames.push(file.name);
+                
+                try {
+                    const tasksFromFile = await processSingleFileClientSide(file);
+                    tasksFromFile.forEach(task => {
+                        task.globalId = nextGlobalTaskId++;
+                        task.priority = PRIORITY_LEVELS.NONE;
+                        task.createdDate = new Date().toISOString(); 
+                        allExtractedTasks.push(task);
+                    });
+                    totalTasksFromBatch += tasksFromFile.length;
+                    validFilesProcessedCount++;
+                } catch (err) {
+                    showError(`שגיאה בעיבוד הקובץ '${file.name}': ${err.message}`);
+                    showDebug(`Error processing file ${file.name}: ${err.stack}`);
+                }
+            }
+            
+            identifyAndMarkDuplicates();
+            saveTasksToLocalStorage(); 
+            updateStatistics();
+
+            processingMessageElement.textContent = '';
+            hideProcessing();
+
+            if (validFilesProcessedCount > 0) {
+                showSuccess(`עיבוד הושלם. ${validFilesProcessedCount} קבצים עובדו, נוספו ${totalTasksFromBatch} משימות. סה"כ ${allExtractedTasks.length} ברשימה.`);
+            } else if (files.length > 0) {
+                showError(`לא עובדו קבצים תקינים מתוך ${files.length} הקבצים שנבחרו.`);
+            }
+
+            if (allExtractedTasks.length > 0) {
+                populateFilterOptions();
+                applyFilters();
+            } else {
+                displayResults([]);
+            }
+        }
+
+        function generateTaskKey(task) {
+            const desc = (task.taskDescription || '').toLowerCase().trim();
+            const resp = (task.responsible || '').toLowerCase().trim();
+            const time = (task.timeline === "לא רלוונטי" ? "לא רלוונטי" : (task.timeline || '')).toLowerCase().trim();
+            const pDate = task.protocolDate || 'לא ידוע';
+            const docType = task.documentType || 'לא ידוע';
+            return `${desc}|${resp}|${time}|${pDate}|${docType}`;
+        }
+
+        function identifyAndMarkDuplicates() {
+            const seenTasks = new Set();
+            let duplicateCount = 0;
+            allExtractedTasks.forEach(task => {
+                task.isDuplicate = false;
+                const taskKey = generateTaskKey(task);
+                if (seenTasks.has(taskKey)) {
+                    task.isDuplicate = true;
+                    duplicateCount++;
+                } else {
+                    seenTasks.add(taskKey);
+                }
+            });
+            if (duplicateCount > 0) {
+                showDebug(`${duplicateCount} משימות כפולות זוהו בסך הכל.`);
+            }
+            return duplicateCount;
+        }
+        
+        function extractDateFromFileName(fileName) {
+            const datePatterns = [
+                /(\d{4}-\d{2}-\d{2})/,
+                /(\d{2}-\d{2}-\d{4})/,
+                /(\d{2}\.\d{2}\.\d{4})/
+            ];
+            for (const pattern of datePatterns) {
+                const match = fileName.match(pattern);
+                if (match && match[1]) {
+                    let dateStr = match[1];
+                    if (pattern.source.includes("DD-MM-YYYY") || pattern.source.includes("DD.MM.YYYY")) {
+                        const parts = dateStr.replace(/\./g, '-').split('-');
+                        if(parts.length === 3) dateStr = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+                    } else if (pattern.source.includes("YYYY-MM-DD")) {
+                        const parts = dateStr.split('-');
+                        if(parts.length === 3) dateStr = `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
+                    }
+                    showDebug(`Date extracted from filename '${fileName}' (internal: ${dateStr})`);
+                    return dateStr;
+                }
+            }
+            return null;
+        }
+
+        function extractDateFromContent(textContent) {
+            const contentStart = textContent.substring(0, 500);
+            const datePatterns = [
+                /\b(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})\b/,
+                /\b(\d{4}[./-]\d{1,2}[./-]\d{1,2})\b/
+            ];
+            for (const pattern of datePatterns) {
+                const match = contentStart.match(pattern);
+                if (match && match[1]) {
+                    let dateStr = match[1];
+                    const parts = dateStr.replace(/[./]/g, '-').split('-');
+                    if (parts.length === 3) {
+                        let year = '', month = '', day = '';
+                        if (parts[2].length === 4) {
+                            year = parts[2]; month = parts[1]; day = parts[0];
+                        } else if (parts[0].length === 4) {
+                            year = parts[0]; month = parts[1]; day = parts[2];
+                        } else if (parts[2].length === 2 && parseInt(parts[2]) >= 0 && parseInt(parts[2]) <= 99) {
+                            year = `20${parts[2].padStart(2,'0')}`;
+                            month = parts[1]; day = parts[0];
+                        }
+                        if (year && month && day) {
+                            const internalDateStr = `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
+                            showDebug(`Date extracted from content (internal: ${internalDateStr})`);
+                            return internalDateStr;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        function formatDateForDisplay(dateStringYYYYMMDD) {
+            if (!dateStringYYYYMMDD || dateStringYYYYMMDD === "לא ידוע") return "לא ידוע";
+            const parts = dateStringYYYYMMDD.split('-');
+            if (parts.length === 3) {
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+            return dateStringYYYYMMDD;
+        }
+
+        function processSingleFileClientSide(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const arrayBuffer = event.target.result;
+                    mammoth.convertToHtml({arrayBuffer: arrayBuffer})
+                        .then(result => {
+                            const htmlContent = result.value;
+                            const textContent = new DOMParser().parseFromString(htmlContent, "text/html").body.textContent || "";
+                            
+                            let protocolDate = extractDateFromFileName(file.name);
+                            if (!protocolDate) {
+                                protocolDate = extractDateFromContent(textContent);
+                            }
+                            if (!protocolDate) {
+                                protocolDate = "לא ידוע";
+                                showDebug(`לא נמצא תאריך עבור הקובץ: ${file.name}`);
+                            }
+
+                            showDebug(`Mammoth output for ${file.name} (first 200 chars): ${htmlContent.substring(0,200)}...`);
+                            const tasks = extractTasksFromFileContent(htmlContent, file.name, protocolDate);
+                            resolve(tasks);
+                        })
+                        .catch(err => {
+                            reject(new Error(`Mammoth.js שגיאה בקובץ ${file.name}: ${err.message}`));
+                        });
+                };
+                reader.onerror = () => {
+                    reject(new Error(`שגיאת FileReader בקריאת הקובץ ${file.name}`));
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function detectDocumentType(html, textContent) {
+            const staffMeetingKeywords = ['ישיבת מטה', 'סיכום והחלטות', 'רקע', 'דיון', 'החלטות'];
+            const taskSectionKeywords = ['סטטוס משימות', 'סיכום משימות', 'משימות להמשך טיפול'];
+            const tableHeaderKeywords = ['נושא', 'אחריות', 'גורם מבצע', 'תאריך יעד', 'סטטוס'];
+
+            let staffMeetingScore = 0;
+            staffMeetingKeywords.forEach(kw => {
+                if (textContent.includes(kw)) staffMeetingScore++;
+            });
+
+            let taskSectionScore = 0;
+            taskSectionKeywords.forEach(kw => {
+                if (textContent.includes(kw)) taskSectionScore++;
+            });
+            
+            let tableHeaderScore = 0;
+            const tempDoc = new DOMParser().parseFromString(html, "text/html");
+            const tables = tempDoc.getElementsByTagName('table');
+            for(let table of tables){
+                const tableText = cleanText(table.textContent);
+                let currentTableScore = 0;
+                tableHeaderKeywords.forEach(kw => {
+                    if(tableText.includes(kw) && kw !== 'תאריך יעד' && kw !== 'לוח זמנים' && kw !== 'לו"ז') currentTableScore++;
+                });
+                if (currentTableScore >= 2) {
+                    tableHeaderScore = currentTableScore;
+                    break;
+                }
+            }
+
+            if (staffMeetingScore >= 1 && (tableHeaderScore >= 2 || taskSectionScore >=1) ) {
+                showDebug('זוהה מסמך מסוג: ישיבת מטה');
+                return 'staff-meeting';
+            }
+            
+            showDebug('זוהה מסמך מסוג: סיכום הנהלה');
+            return 'management';
+        }
+
+        function extractTasksFromStaffMeeting(html, textContent, fileName, protocolDate) {
+            let tasks = [];
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            const tables = tempDiv.getElementsByTagName('table');
+            
+            const columnKeywords = {
+                topic: ['נושא', 'תחום', 'רקע'],
+                task: ['החלטה', 'משימה', 'פעולה נדרשת', 'הערות', 'סיכום', 'פירוט', 'החלטות ופעולות'],
+                responsible: ['אחראי', 'אחריות', 'גורם מבצע', 'גורם אחראי', 'באחריות']
+            };
+
+            showDebug(`מחפש טבלאות משימות בישיבת מטה: ${fileName}. נמצאו ${tables.length} טבלאות.`);
+            
+            for (let tableIndex = 0; tableIndex < tables.length; tableIndex++) {
+                const table = tables[tableIndex];
+                const rows = table.getElementsByTagName('tr');
+                if (rows.length < 2) continue;
+
+                const headerRow = rows[0];
+                const headerCells = Array.from(headerRow.children).map(cell => cleanText(cell.textContent));
+                
+                let colMap = {};
+                Object.keys(columnKeywords).forEach(key => {
+                    columnKeywords[key].forEach(kw => {
+                        const index = headerCells.findIndex(hc => hc.includes(kw));
+                        if (index !== -1 && colMap[key] === undefined) colMap[key] = index;
+                    });
+                });
+                
+                if (colMap.task === undefined || colMap.responsible === undefined || colMap.topic === undefined) {
+                    showDebug(`טבלה ${tableIndex + 1} (מטה): לא זוהו עמודות 'נושא', 'משימה' ו'אחראי' הכרחיות. מדלג.`);
+                    continue;
+                }
+                showDebug(`טבלה ${tableIndex + 1} (מטה): זוהו עמודות: נושא (${colMap.topic}), משימה (${colMap.task}), אחראי (${colMap.responsible})`);
+
+                let tableTaskCount = 0;
+                for (let i = 1; i < rows.length; i++) {
+                    const cells = rows[i].children;
+                    const taskDesc = colMap.task < cells.length ? cleanText(cells[colMap.task].textContent) : '';
+                    const responsible = colMap.responsible < cells.length ? cleanText(cells[colMap.responsible].textContent) : 'לא צוין';
+                    const topic = (colMap.topic < cells.length) ? cleanText(cells[colMap.topic].textContent) : 'כללי';
+
+                    if (taskDesc.trim() === '') continue;
+
+                    tasks.push({
+                        numberFromFile: (tasks.length + 1).toString(),
+                        section: topic,
+                        taskDescription: taskDesc,
+                        responsible: responsible,
+                        timeline: "לא רלוונטי",
+                        documentType: 'ישיבת מטה',
+                        protocolDate: protocolDate
+                    });
+                    tableTaskCount++;
+                }
+                if (tableTaskCount > 0) {
+                    showDebug(`חולצו ${tableTaskCount} משימות מטבלה ${tableIndex + 1} (ישיבת מטה)`);
+                }
+            }
+
+            showDebug(`סה"כ חולצו ${tasks.length} משימות מישיבת מטה: ${fileName}`);
+            return tasks;
+        }
+
+        function extractTasksFromFileContent(html, currentFileNameForDebug = "לא ידוע", protocolDate = "לא ידוע") {
+            try {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                const textContent = tempDiv.textContent || tempDiv.innerText || "";
+                
+                const docType = detectDocumentType(html, textContent);
+                showDebug(`זוהה סוג מסמך: ${docType} עבור קובץ: ${currentFileNameForDebug}`);
+                
+                if (docType === 'staff-meeting') {
+                    return extractTasksFromStaffMeeting(html, textContent, currentFileNameForDebug, protocolDate);
+                }
+                
+                let tasksForCurrentFile = [];
+                const summaryKeyword = 'סיכום/המשך טיפול:';
+                if (textContent.indexOf(summaryKeyword) === -1) {
+                    showDebug(`לא נמצאה הכותרת "${summaryKeyword}" בקובץ הנהלה: ${currentFileNameForDebug}.`);
+                    return [];
+                }
+
+                const tables = tempDiv.getElementsByTagName('table');
+                let tasksTable = null;
+                const keywordPositionInHtml = html.lastIndexOf(summaryKeyword);
+                for (let i = 0; i < tables.length; i++) {
+                    if (html.indexOf(tables[i].outerHTML, keywordPositionInHtml) > keywordPositionInHtml) {
+                        const headerKeywords = ['החלטה', 'אחראי', 'לוח זמנים', 'מס\'', 'סעיף'];
+                        let headerMatchCount = 0;
+                        const thCells = tables[i].getElementsByTagName('th');
+                        const firstRowCells = (tables[i].rows.length > 0) ? tables[i].rows[0].cells : [];
+                        for (let th of thCells) if (headerKeywords.some(kw => cleanText(th.textContent).includes(kw))) headerMatchCount++;
+                        if (headerMatchCount < 2 && firstRowCells.length > 0) {
+                            for (let cell of firstRowCells) if (headerKeywords.some(kw => cleanText(cell.textContent).includes(kw))) headerMatchCount++;
+                        }
+                        if (headerMatchCount >= 2) { tasksTable = tables[i]; break; }
+                    }
+                }
+
+                if (!tasksTable) {
+                    showDebug(`לא נמצאה טבלת משימות מתאימה אחרי "${summaryKeyword}" בקובץ הנהלה: ${currentFileNameForDebug}.`);
+                    return [];
+                }
+
+                const rows = tasksTable.getElementsByTagName('tr');
+                let startRow = 0;
+                for (let i = 0; i < Math.min(3, rows.length); i++) {
+                    if (['מס\'', 'סעיף', 'החלטה', 'אחראי'].some(kw => cleanText(rows[i].textContent).includes(kw))) { startRow = i + 1; break; }
+                }
+                if (startRow === 0 && rows.length > 0) startRow = 1;
+
+                for (let i = startRow; i < rows.length; i++) {
+                    let taskCells = rows[i].getElementsByTagName('td');
+                    if (taskCells.length < 5) {
+                        const thCells = rows[i].getElementsByTagName('th');
+                        if (thCells.length >= 5) taskCells = thCells; else continue;
+                    }
+                    if (taskCells.length >= 5) {
+                        const task = extractTaskFromCells(taskCells, tasksForCurrentFile.length + 1);
+                        task.documentType = 'סיכום הנהלה';
+                        task.protocolDate = protocolDate;
+                        if (task.taskDescription && task.taskDescription.trim() !== '') tasksForCurrentFile.push(task);
+                    }
+                }
+                showDebug(`חולצו ${tasksForCurrentFile.length} משימות מקובץ הנהלה: ${currentFileNameForDebug}`);
+                return tasksForCurrentFile;
+
+            } catch (error) {
+                showDebug(`שגיאה בחילוץ משימות מקובץ ${currentFileNameForDebug}: ${error.message} - ${error.stack}`);
+                return [];
+            }
+        }
+        
+        function extractTaskFromCells(cells, taskNumberInFile) {
+            const getCellText = (index) => cells[index] ? cleanText(cells[index].textContent) : '';
+            return {
+                numberFromFile: getCellText(0) || taskNumberInFile.toString(),
+                section: getCellText(1) || '',
+                taskDescription: getCellText(2) || '',
+                responsible: getCellText(3) || 'לא צוין',
+                timeline: getCellText(4) || 'לא צוין'
+            };
+        }
+        
+        function cleanText(text) {
+            return (typeof text === 'string') ? text.replace(/\s+/g, ' ').trim() : '';
+        }
+
+        function updateStatistics() {
+            document.getElementById('statTotal').textContent = allExtractedTasks.length;
+            document.getElementById('statPrioritized').textContent = allExtractedTasks.filter(t => t.priority > PRIORITY_LEVELS.NONE).length;
+            document.getElementById('statDuplicates').textContent = allExtractedTasks.filter(t => t.isDuplicate).length;
+            document.getElementById('statResponsibles').textContent = new Set(allExtractedTasks.map(t => t.responsible)).size;
+        }
+
+        function populateFilterOptions() {
+            const responsibleSelect = document.getElementById('filterResponsible');
+            const sectionSelect = document.getElementById('filterSection');
+            const timelineSelect = document.getElementById('filterTimeline');
+            const protocolDateSelect = document.getElementById('filterProtocolDate');
+
+            const populateSelect = (selectElement, valuesSet) => {
+                const currentValue = selectElement.value;
+                selectElement.innerHTML = '<option value="all">הכל</option>';
+                const mappedValues = (selectElement.id === 'filterProtocolDate') ?
+                                     Array.from(valuesSet).map(val => ({value: val, display: formatDateForDisplay(val)})) :
+                                     Array.from(valuesSet).map(val => ({value: val, display: val}));
+                
+                const sortedValues = (selectElement.id === 'filterProtocolDate') ?
+                                     mappedValues.sort((a,b) => a.value.localeCompare(b.value)) :
+                                     mappedValues;
+
+                sortedValues.forEach(item => {
+                    if (item.value && item.value.trim() !== '' && item.value !== "לא ידוע" && item.value !== "לא רלוונטי") {
+                        const option = document.createElement('option');
+                        option.value = item.value;
+                        option.textContent = item.display;
+                        selectElement.appendChild(option);
+                    }
+                });
+                if (Array.from(valuesSet).some(val => val === "לא ידוע")) {
+                    const unknownOption = document.createElement('option');
+                    unknownOption.value = "לא ידוע";
+                    unknownOption.textContent = "לא ידוע";
+                    selectElement.appendChild(unknownOption);
+                }
+                if (selectElement.id === 'filterTimeline' && Array.from(valuesSet).some(val => val === "לא רלוונטי")) {
+                    const naOption = document.createElement('option');
+                    naOption.value = "לא רלוונטי";
+                    naOption.textContent = "לא רלוונטי";
+                    selectElement.appendChild(naOption);
+                }
+                selectElement.value = Array.from(selectElement.options).some(opt => opt.value === currentValue) ? currentValue : 'all';
+            };
+
+            populateSelect(responsibleSelect, new Set(allExtractedTasks.map(task => task.responsible)));
+            populateSelect(sectionSelect, new Set(allExtractedTasks.map(task => task.section)));
+            populateSelect(timelineSelect, new Set(allExtractedTasks.map(task => task.timeline)));
+            populateSelect(protocolDateSelect, new Set(allExtractedTasks.map(task => task.protocolDate)));
+        }
+        
+        function getFilteredTasks() {
+            return allExtractedTasks.filter(task =>
+                (currentFilters.responsible === 'all' || task.responsible === currentFilters.responsible) &&
+                (currentFilters.section === 'all' || task.section === currentFilters.section) &&
+                (currentFilters.timeline === 'all' || task.timeline === currentFilters.timeline) &&
+                (currentFilters.protocolDate === 'all' || task.protocolDate === currentFilters.protocolDate) &&
+                (currentFilters.priority === 'all' || task.priority === parseInt(currentFilters.priority))
+            );
+        }
+
+        function applyFilters() {
+            currentFilters.responsible = document.getElementById('filterResponsible').value;
+            currentFilters.section = document.getElementById('filterSection').value;
+            currentFilters.timeline = document.getElementById('filterTimeline').value;
+            currentFilters.protocolDate = document.getElementById('filterProtocolDate').value;
+            currentFilters.priority = document.getElementById('filterPriority').value;
+            displayResults(getFilteredTasks());
+            updateStatistics(); 
+        }
+        
+        function confirmClearAllData() {
+            if (confirm("האם אתה בטוח שברצונך לנקות את כל המשימות והנתונים? פעולה זו אינה הפיכה.")) {
+                clearAllData();
+                showSuccess("כל הנתונים נוקו בהצלחה.");
+            }
+        }
+
+        function clearAllData() {
+            allExtractedTasks = [];
+            lastProcessedFileNames = [];
+            currentFilters = { responsible: 'all', section: 'all', timeline: 'all', protocolDate: 'all', priority: 'all' };
+            nextGlobalTaskId = 1;
+
+            document.getElementById('tasksTableBodyStaffMeeting').innerHTML = '';
+            document.getElementById('tasksTableBodyManagement').innerHTML = '';
+            document.getElementById('divStaffMeetingTasks').style.display = 'none';
+            document.getElementById('divManagementTasks').style.display = 'none';
+
+            document.getElementById('filterResponsible').innerHTML = '<option value="all">הכל</option>';
+            document.getElementById('filterSection').innerHTML = '<option value="all">הכל</option>';
+            document.getElementById('filterTimeline').innerHTML = '<option value="all">הכל</option>';
+            document.getElementById('filterProtocolDate').innerHTML = '<option value="all">הכל</option>';
+            document.getElementById('filterPriority').value = 'all';
+
+
+            updateStatistics(); 
+
+            document.getElementById('fileInfo').innerHTML = '';
+            document.getElementById('uploadSection').style.display = 'block';
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('filtersSection').style.display = 'none';
+            
+            hideMessages(); 
+            document.getElementById('debugSection').style.display = 'none';
+            document.getElementById('debugContent').textContent = '';
+            if (fileInput) fileInput.value = ''; 
+
+            localStorage.removeItem('savedTasks');
+            localStorage.removeItem('nextGlobalTaskId');
+            localStorage.removeItem('lastProcessedFileNames');
+
+
+            console.log("All data cleared including localStorage");
+        }
+
+
+        function deleteTask(globalId) {
+            const taskIndex = allExtractedTasks.findIndex(task => task.globalId === globalId);
+            if (taskIndex > -1) {
+                allExtractedTasks.splice(taskIndex, 1);
+                showSuccess("המשימה נמחקה.");
+                identifyAndMarkDuplicates();
+                saveTasksToLocalStorage();
+                updateStatistics();
+                populateFilterOptions();
+                applyFilters();
+            } else {
+                showError("שגיאה: המשימה למחיקה לא נמצאה.");
+            }
+        }
+
+        function togglePriority(globalId) {
+            const task = allExtractedTasks.find(task => task.globalId === globalId);
+            if (task) {
+                task.priority = (task.priority + 1) % (Object.keys(PRIORITY_LEVELS).length);
+                saveTasksToLocalStorage();
+                updateStatistics();
+                applyFilters();
+            }
+        }
+
+        function setTaskReminder(globalId) {
+            const task = allExtractedTasks.find(t => t.globalId === globalId);
+            if (!task) {
+                showError("משימה לא נמצאה.");
+                return;
+            }
+
+            const dateStr = prompt("הכנס תאריך לתזכורת (YYYY-MM-DD):");
+            if (!dateStr) return;
+
+            const timeStr = prompt("הכנס שעה לתזכורת (HH:MM, לדוגמה 14:30):");
+            if (!timeStr) return;
+
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+            const timeRegex = /^\d{2}:\d{2}$/;
+
+            if (!dateRegex.test(dateStr) || !timeRegex.test(timeStr)) {
+                showError("פורמט התאריך או השעה אינו תקין. אנא השתמש ב-YYYY-MM-DD וב-HH:MM.");
+                return;
+            }
+
+            const reminderDateTime = new Date(`${dateStr}T${timeStr}:00`);
+            if (isNaN(reminderDateTime.getTime())) {
+                showError("התאריך או השעה שהוזנו אינם חוקיים.");
+                return;
+            }
+
+            const delay = reminderDateTime.getTime() - new Date().getTime();
+            if (delay < 0) {
+                showError("לא ניתן להגדיר תזכורת לזמן שכבר עבר.");
+                return;
+            }
+
+            const doSchedule = () => {
+                setTimeout(() => {
+                    new Notification("תזכורת למשימה:", {
+                        body: task.taskDescription,
+                        icon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAGnSURBVFhHxZftSsRAEER/e+nBSBUSRBAlEqELFReRBPEBfMWDEy9eRBSCBL2LQKyLgBCJIN7AlRAl4g+gqN4L/g0j2Wl2Z3cyu7MDBwNzdt/szs7O7GwhwnsY4cF30P9dENAmgK8J1O1s34gP4bMHYLgLll9pRvY7y3ZgGI4lcVwKq2YgL7Y6K4VfV5gHvgFv6X90z5VgitgsQ4y3TVrdxtjplmF76V0h0kGAV8P3gZgCPE7kESIC3lQnQNQ1DpvE/ZSLwnMM474Az0LzAEUADgPhZKB1kPOY2jRkRLv0NZAn9k5PISmAJoDTEBFx2x8yqkSNHgKqQ0sAEmAxAHSk7z1AmgEmAFQApQCvAKMA8wK7C9g3P2QxgG8yHHCyAFkBCkBCYAmgHMAFQCMQCcAlQCvAKMAPQC/AVL8M2j50pQApAA6A0gAtAKUARgArALUApQClACYALgCXAEsAUwA5gA5ADiABkAC4ARwAFgAqAFrAAlAC2AFMAGYAMwAZgAiACIARYBGgAqAK0AdYBaAPWAHUAfgCfAGeASgBdARsB8gQYg8c928A0gBHYL7AfoD+BfMPlX5sN+KxXAAAAAElFTkSuQmCC"
+                    });
+                }, delay);
+                showSuccess(`תזכורת נקבעה עבור: "${task.taskDescription.substring(0,30)}..." ל-${formatDateForDisplay(dateStr)} ${timeStr}.`);
+            };
+            
+            if (Notification.permission === "granted") {
+                doSchedule();
+            } else if (Notification.permission !== "denied") {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        doSchedule();
+                    } else {
+                        showError("ההרשאה להציג התראות נדחתה. לא ניתן להגדיר תזכורת.");
+                    }
+                });
+            } else {
+                showError("ההרשאה להציג התראות חסומה. בדוק את הגדרות הדפדפן.");
+            }
+        }
+
+        function displayResults(tasksToDisplay = allExtractedTasks) {
+            const resultsSection = document.getElementById('resultsSection');
+            const fileInfo = document.getElementById('fileInfo');
+            const filtersSection = document.getElementById('filtersSection');
+
+            const divStaffMeetingTasks = document.getElementById('divStaffMeetingTasks');
+            const tasksTableBodyStaffMeeting = document.getElementById('tasksTableBodyStaffMeeting');
+            const divManagementTasks = document.getElementById('divManagementTasks');
+            const tasksTableBodyManagement = document.getElementById('tasksTableBodyManagement');
+
+            tasksTableBodyStaffMeeting.innerHTML = '';
+            tasksTableBodyManagement.innerHTML = '';
+            
+            const staffMeetingTasks = tasksToDisplay.filter(task => task.documentType === 'ישיבת מטה');
+            const managementTasks = tasksToDisplay.filter(task => task.documentType === 'סיכום הנהלה');
+
+            let fileInfoText;
+            if (lastProcessedFileNames.length === 1) {
+                fileInfoText = `קבצים שעובדו: ${lastProcessedFileNames[0]}. `;
+            } else if (lastProcessedFileNames.length > 1) {
+                fileInfoText = `קבצים שעובדו (${lastProcessedFileNames.length}): ${lastProcessedFileNames.join(', ').substring(0,100)}... `;
+            } else if (allExtractedTasks.length > 0) {
+                fileInfoText = `משימות נטענו. `;
+            } else {
+                fileInfoText = `לא נבחרו קבצים. `;
+            }
+            
+            let totalDuplicatesOverall = allExtractedTasks.filter(t => t.isDuplicate).length;
+
+            let countText;
+            if (tasksToDisplay.length === allExtractedTasks.length && 
+                currentFilters.responsible === 'all' && 
+                currentFilters.section === 'all' && 
+                currentFilters.timeline === 'all' &&
+                currentFilters.protocolDate === 'all' &&
+                currentFilters.priority === 'all') {
+                countText = `סה"כ ${allExtractedTasks.length} משימות.`;
+            } else {
+                countText = `מציג ${tasksToDisplay.length} מתוך ${allExtractedTasks.length} משימות (${staffMeetingTasks.length} מטה, ${managementTasks.length} הנהלה).`;
+            }
+            if (totalDuplicatesOverall > 0) {
+                countText += ` זוהו ${totalDuplicatesOverall} כפילויות בסך הכל.`;
+            }
+            
+            fileInfo.innerHTML = `
+                <span class="file-name">${fileInfoText}</span>
+                <span class="task-count">${countText}</span>`;
+            
+            if (staffMeetingTasks.length > 0) {
+                divStaffMeetingTasks.style.display = 'block';
+                staffMeetingTasks.forEach((task) => {
+                    const row = tasksTableBodyStaffMeeting.insertRow();
+                    row.className = PRIORITY_CLASS[task.priority] || '';
+                    // if (task.isDuplicate) row.className += ' duplicate-task'; // Removed visual duplicate marking
+                    
+                    row.innerHTML = `
+                        <td class="task-number">${task.globalId}</td>
+                        <td class="section-name">
+                            ${task.section || ''}
+                        </td>
+                        <td class="task-description">${task.taskDescription || ''}</td>
+                        <td class="responsible">${task.responsible || 'לא צוין'}</td>
+                        <td class="protocol-date-cell">${formatDateForDisplay(task.protocolDate)}</td>
+                        <td class="action-cell">
+                            <button class="btn-action btn-reminder" onclick="setTaskReminder(${task.globalId})" title="הגדר תזכורת">⏰</button>
+                            <button class="btn-action btn-calendar" onclick="addTaskToCalendar(${task.globalId})" title="הוסף ליומן Google">📅</button>
+                            <button class="btn-action btn-priority ${PRIORITY_CLASS[task.priority] || ''}" onclick="togglePriority(${task.globalId})" title="שנה תעדוף">${PRIORITY_TEXT[task.priority]}</button>
+                            <button class="btn-action btn-delete" onclick="deleteTask(${task.globalId})" title="מחק משימה">🗑️</button>
+                        </td>
+                    `;
+                });
+            } else {
+                divStaffMeetingTasks.style.display = 'none';
+            }
+
+            if (managementTasks.length > 0) {
+                divManagementTasks.style.display = 'block';
+                managementTasks.forEach((task) => {
+                    const row = tasksTableBodyManagement.insertRow();
+                    row.className = PRIORITY_CLASS[task.priority] || '';
+                    // if (task.isDuplicate) row.className += ' duplicate-task'; // Removed visual duplicate marking
+                    const timelineClass = (task.timeline === 'לא צוין' || task.timeline === '' || task.timeline === 'לא רלוונטי') ? 'no-date' : 'timeline';
+                    row.innerHTML = `
+                        <td class="task-number">${task.globalId}</td>
+                        <td class="section-name">
+                            ${task.section || ''}
+                        </td>
+                        <td class="task-description">${task.taskDescription || ''}</td>
+                        <td class="responsible">${task.responsible || 'לא צוין'}</td>
+                        <td class="${timelineClass}">${task.timeline || 'לא צוין'}</td>
+                        <td class="protocol-date-cell">${formatDateForDisplay(task.protocolDate)}</td>
+                        <td class="action-cell">
+                            <button class="btn-action btn-reminder" onclick="setTaskReminder(${task.globalId})" title="הגדר תזכורת">⏰</button>
+                            <button class="btn-action btn-calendar" onclick="addTaskToCalendar(${task.globalId})" title="הוסף ליומן Google">📅</button>
+                            <button class="btn-action btn-priority ${PRIORITY_CLASS[task.priority] || ''}" onclick="togglePriority(${task.globalId})" title="שנה תעדוף">${PRIORITY_TEXT[task.priority]}</button>
+                            <button class="btn-action btn-delete" onclick="deleteTask(${task.globalId})" title="מחק משימה">🗑️</button>
+                        </td>
+                    `;
+                });
+            } else {
+                divManagementTasks.style.display = 'none';
+            }
+            
+            resultsSection.style.display = 'block';
+            filtersSection.style.display = allExtractedTasks.length > 0 ? 'flex' : 'none';
+            document.getElementById('uploadSection').style.display = 'none';
+        }
+
+        function parseTaskDateForCalendar(dateStringYYYYMMDD) {
+            if (!dateStringYYYYMMDD || dateStringYYYYMMDD === "לא ידוע" || dateStringYYYYMMDD === "לא רלוונטי") return null;
+            const parts = dateStringYYYYMMDD.split('-');
+            if (parts.length === 3) {
+                return { year: parseInt(parts[0]), month: parseInt(parts[1]), day: parseInt(parts[2]) };
+            }
+            showDebug(`Could not parse YYYY-MM-DD date for calendar: ${dateStringYYYYMMDD}`);
+            return null;
+        }
+
+        function formatDateForGoogleCalendar(dateObj) {
+            if (!dateObj) return '';
+            const year = dateObj.year;
+            const month = String(dateObj.month).padStart(2, '0');
+            const day = String(dateObj.day).padStart(2, '0');
+            return `${year}${month}${day}`;
+        }
+
+        function addTaskToCalendar(globalId) {
+            const task = allExtractedTasks.find(t => t.globalId === globalId);
+            if (!task) {
+                showError("משימה לא נמצאה.");
+                return;
+            }
+
+            let startDateObj = null;
+            
+            if (task.documentType === 'ישיבת מטה') {
+                if (task.protocolDate && task.protocolDate !== "לא ידוע") {
+                    startDateObj = parseTaskDateForCalendar(task.protocolDate);
+                }
+            } else {
+                const timelineLower = (task.timeline || '').toLowerCase();
+                const dateRegex = /(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})/;
+                
+                if (timelineLower !== 'לא צוין' && timelineLower.trim() !== '' && timelineLower !== 'לא רלוונטי') {
+                    const match = timelineLower.match(dateRegex);
+                    if (match && match[1]) {
+                        let parts = match[1].replace(/[./]/g, '-').split('-');
+                        if (parts.length === 3) {
+                            let year = parts[2], month = parts[1], day = parts[0];
+                            if (parts[0].length === 4) {
+                                year = parts[0]; month = parts[1]; day = parts[2];
+                            } else if (parts[2].length === 2) {
+                                year = `20${parts[2]}`;
+                            }
+                            startDateObj = parseTaskDateForCalendar(`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`);
+                        }
+                    } else if (timelineLower.startsWith('עד ')) {
+                        const datePart = timelineLower.substring(3).trim();
+                        const untilMatch = datePart.match(dateRegex);
+                        if (untilMatch && untilMatch[1]) {
+                            let parts = untilMatch[1].replace(/[./]/g, '-').split('-');
+                            if (parts.length === 3) {
+                                let year = parts[2], month = parts[1], day = parts[0];
+                                if (parts[0].length === 4) {year = parts[0]; month = parts[1]; day = parts[2];}
+                                else if (parts[2].length === 2) {year = `20${parts[2]}`;}
+                                startDateObj = parseTaskDateForCalendar(`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`);
+                            }
+                        }
+                    }
+                }
+                if (!startDateObj && task.protocolDate && task.protocolDate !== "לא ידוע") {
+                    startDateObj = parseTaskDateForCalendar(task.protocolDate);
+                }
+            }
+
+            if (!startDateObj) {
+                showError(`לא ניתן לקבוע תאריך עבור משימה זו ("${task.taskDescription.substring(0,20)}...") ליומן.`);
+                return;
+            }
+
+            let endDateObj = new Date(startDateObj.year, startDateObj.month - 1, startDateObj.day);
+            endDateObj.setDate(endDateObj.getDate() + 1);
+            const endDateGoogle = formatDateForGoogleCalendar({year: endDateObj.getFullYear(), month: endDateObj.getMonth() + 1, day: endDateObj.getDate()});
+            const startDateGoogle = formatDateForGoogleCalendar(startDateObj);
+
+            const eventTitle = encodeURIComponent(task.taskDescription);
+            const eventDetails = encodeURIComponent(
+                `אחראי: ${task.responsible || 'לא צוין'}\n` +
+                `סעיף/נושא: ${task.section || 'לא צוין'}\n` +
+                (task.documentType !== 'ישיבת מטה' ? `לוח זמנים מקורי: ${task.timeline || 'לא צוין'}\n` : '') +
+                `תאריך פרוטוקול: ${formatDateForDisplay(task.protocolDate)}\n` +
+                `סוג מסמך: ${task.documentType || 'לא ידוע'}`
+            );
+
+            const googleCalendarUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${startDateGoogle}/${endDateGoogle}&details=${eventDetails}`;
+            
+            showDebug(`Google Calendar URL: ${googleCalendarUrl}`);
+            window.open(googleCalendarUrl, '_blank');
+        }
+
+        function copyToClipboard() {
+            if (allExtractedTasks.length === 0) { showError("אין משימות להעתקה."); return; }
+            
+            const staffMeetingTasks = allExtractedTasks.filter(task => task.documentType === 'ישיבת מטה');
+            const managementTasks = allExtractedTasks.filter(task => task.documentType === 'סיכום הנהלה');
+
+            let text = `משימות מרוכזות (סה"כ: ${allExtractedTasks.length})\n`;
+            if (lastProcessedFileNames.length > 0) {
+                text += `(מתוך קבצים: ${lastProcessedFileNames.join(', ')})\n`;
+            }
+            let totalDuplicates = allExtractedTasks.filter(t => t.isDuplicate).length;
+            if (totalDuplicates > 0) {
+                text += `(זוהו ${totalDuplicates} משימות כפולות ברשימה הכוללת)\n`;
+            }
+
+            const getPriorityTextForCopy = (priorityLevel) => {
+                const priorityKeys = ['ללא', 'נמוך', 'בינוני', 'גבוה']; 
+                return priorityKeys[priorityLevel] || 'ללא';
+            }
+
+            if (staffMeetingTasks.length > 0) {
+                text += '\n--- סיכומי ישיבות מטה ---\n';
+                text += 'מס\' כללי\tנושא\tמשימה\tאחראי\tתאריך פרוטוקול\tכפילות\tתעדוף\n' + '─'.repeat(100) + '\n';
+                staffMeetingTasks.forEach((task) => {
+                    text += `${task.globalId}\t${task.section}\t${task.taskDescription}\t${task.responsible}\t${formatDateForDisplay(task.protocolDate)}\t${task.isDuplicate ? 'כן' : 'לא'}\t${getPriorityTextForCopy(task.priority)}\n`;
+                });
+            }
+
+            if (managementTasks.length > 0) {
+                text += '\n--- סיכומי ישיבות הנהלה ---\n';
+                text += 'מס\' כללי\tסעיף\tהחלטה/המשך טיפול\tאחראי\tלוח זמנים\tתאריך פרוטוקול\tכפילות\tתעדוף\n' + '─'.repeat(110) + '\n';
+                managementTasks.forEach((task) => {
+                    text += `${task.globalId}\t${task.section}\t${task.taskDescription}\t${task.responsible}\t${task.timeline}\t${formatDateForDisplay(task.protocolDate)}\t${task.isDuplicate ? 'כן' : 'לא'}\t${getPriorityTextForCopy(task.priority)}\n`;
+                });
+            }
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => showSuccess('כל המשימות הועתקו!'))
+                .catch(err => { showError('שגיאה בהעתקה: ' + err.message); legacyCopyToClipboard(text); });
+            } else { legacyCopyToClipboard(text); }
+        }
+
+        function legacyCopyToClipboard(text) {
+            const ta = document.createElement('textarea'); ta.value = text;
+            ta.style.position='fixed'; ta.style.top='-9999px'; document.body.appendChild(ta);
+            ta.focus(); ta.select();
+            try {
+                if(document.execCommand('copy')) showSuccess('כל המשימות הועתקו (שיטה ישנה)!');
+                else showError('העתקה נכשלה (שיטה ישנה).');
+            } catch (err) { showError('שגיאה בהעתקה (שיטה ישנה): ' + err.message); }
+            document.body.removeChild(ta);
+        }
+
+        function exportToExcel() { 
+            showDebug("exportToExcel function called.");
+            if (allExtractedTasks.length === 0) {
+                showError("אין משימות לייצוא.");
+                showDebug("No tasks to export.");
+                return;
+            }
+            showDebug("Creating CSV content...");
+            const csvContent = createCSVContent();
+            showDebug("CSV content created. Length: " + csvContent.length);
+            
+            try {
+                const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                showDebug("Blob created. Type: " + blob.type + ", Size: " + blob.size);
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                showDebug("Blob URL created: " + url);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `משימות_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link);
+                showDebug("Link appended to body. Clicking link...");
+                link.click();
+                showDebug("Link clicked.");
+                document.body.removeChild(link);
+                showDebug("Link removed from body.");
+                URL.revokeObjectURL(url); // Clean up the object URL
+                showSuccess('המשימות יוצאו בהצלחה לקובץ CSV (ניתן לפתוח באקסל)!');
+            } catch (e) {
+                showError("שגיאה בתהליך ייצוא הקובץ: " + e.message);
+                showDebug("Error during CSV export process: " + e.message + "\nStack: " + e.stack);
+                console.error("Export error:", e);
+            }
+        }
+
+        function createCSVContent() {
+            showDebug("createCSVContent function called.");
+            let csv = 'מס\' כללי,סוג מסמך,נושא/סעיף,משימה/החלטה,אחראי,לוח זמנים,תאריך פרוטוקול,תעדוף,כפילות\n';
+            const getPriorityTextForCopy = (priorityLevel) => {
+                const priorityKeys = ['ללא', 'נמוך', 'בינוני', 'גבוה'];
+                return priorityKeys[priorityLevel] || 'ללא';
+            }
+            
+            allExtractedTasks.forEach(task => {
+                const escapeCSV = (field) => `"${String(field === undefined || field === null ? '' : field).replace(/"/g, '""')}"`;
+                csv += `${task.globalId || ''},${escapeCSV(task.documentType)},${escapeCSV(task.section)},${escapeCSV(task.taskDescription)},${escapeCSV(task.responsible)},${escapeCSV(task.timeline)},${escapeCSV(formatDateForDisplay(task.protocolDate))},${escapeCSV(getPriorityTextForCopy(task.priority))},${escapeCSV(task.isDuplicate ? 'כן' : 'לא')}\n`;
+            });
+            showDebug("CSV content generation complete. First 100 chars: " + csv.substring(0,100));
+            return csv;
+        }
+
+        function exportToJSON() {
+            showDebug("exportToJSON function called.");
+            if (allExtractedTasks.length === 0) {
+                showError("אין משימות לייצוא.");
+                showDebug("No tasks to export for JSON.");
+                return;
+            }
+            const dataToExport = {
+                exportDate: new Date().toISOString(),
+                totalTasks: allExtractedTasks.length,
+                nextGlobalTaskId: nextGlobalTaskId, 
+                tasks: allExtractedTasks
+            };
+            showDebug("Data for JSON export prepared.");
+            
+            try {
+                const jsonString = JSON.stringify(dataToExport, null, 2);
+                showDebug("JSON string created. Length: " + jsonString.length);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                showDebug("JSON Blob created. Type: " + blob.type + ", Size: " + blob.size);
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                showDebug("JSON Blob URL created: " + url);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `משימות_${new Date().toISOString().split('T')[0]}.json`);
+                document.body.appendChild(link);
+                showDebug("JSON Link appended to body. Clicking link...");
+                link.click();
+                showDebug("JSON Link clicked.");
+                document.body.removeChild(link);
+                showDebug("JSON Link removed from body.");
+                URL.revokeObjectURL(url);
+                showSuccess('המשימות נשמרו בהצלחה כקובץ JSON!');
+            } catch (e) {
+                showError("שגיאה בתהליך ייצוא ה-JSON: " + e.message);
+                showDebug("Error during JSON export process: " + e.message + "\nStack: " + e.stack);
+                console.error("JSON Export error:", e);
+            }
+        }
+
+        function importFromJSON(event) {
+            showDebug("importFromJSON function called.");
+            const file = event.target.files[0];
+            if (!file) {
+                showDebug("No file selected for import.");
+                return;
+            }
+            showDebug(`Importing file: ${file.name}`);
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    showDebug("File read. Parsing JSON...");
+                    const data = JSON.parse(e.target.result);
+                    if (data.tasks && Array.isArray(data.tasks)) {
+                        showDebug(`JSON parsed. Found ${data.tasks.length} tasks in file.`);
+                        
+                        const importedTasks = data.tasks.map(task => {
+                            task.globalId = nextGlobalTaskId++; 
+                            task.priority = task.priority !== undefined ? task.priority : PRIORITY_LEVELS.NONE;
+                            task.isDuplicate = task.isDuplicate !== undefined ? task.isDuplicate : false; 
+                            task.documentType = task.documentType || "לא ידוע";
+                            task.protocolDate = task.protocolDate || "לא ידוע";
+                            task.timeline = task.timeline || "לא צוין";
+                            task.section = task.section || "";
+                            task.responsible = task.responsible || "לא צוין";
+                            return task;
+                        });
+                        
+                        allExtractedTasks.push(...importedTasks);
+                        
+                        if (data.nextGlobalTaskId && data.nextGlobalTaskId > nextGlobalTaskId) {
+                            nextGlobalTaskId = data.nextGlobalTaskId;
+                             showDebug(`nextGlobalTaskId updated to ${nextGlobalTaskId} from imported file.`);
+                        }
+                        
+                        identifyAndMarkDuplicates();
+                        saveTasksToLocalStorage();
+                        updateStatistics();
+                        populateFilterOptions();
+                        displayResults(allExtractedTasks); 
+                        
+                        showSuccess(`${importedTasks.length} משימות נטענו והתווספו לרשימה!`);
+                    } else {
+                        showError("הקובץ לא מכיל משימות בפורמט תקין.");
+                        showDebug("Invalid JSON format: 'tasks' array not found or not an array.");
+                    }
+                } catch (err) {
+                    showError("שגיאה בקריאת הקובץ: " + err.message);
+                    showDebug("Error parsing JSON from file: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = null; 
+        }
+
+        function saveTasksToLocalStorage() {
+            try {
+                localStorage.setItem('savedTasks', JSON.stringify(allExtractedTasks));
+                localStorage.setItem('nextGlobalTaskId', nextGlobalTaskId.toString());
+                localStorage.setItem('lastProcessedFileNames', JSON.stringify(lastProcessedFileNames));
+                showDebug("Tasks saved to localStorage.");
+            } catch (e) {
+                showError("שגיאה בשמירת נתונים לדפדפן. ייתכן והאחסון מלא.");
+                console.error("Error saving to localStorage:", e);
+            }
+        }
+
+        function loadTasksFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem('savedTasks');
+                const savedNextId = localStorage.getItem('nextGlobalTaskId');
+                const savedFileNames = localStorage.getItem('lastProcessedFileNames');
+
+                if (saved) {
+                    allExtractedTasks = JSON.parse(saved);
+                    allExtractedTasks.forEach(task => {
+                        if (task.priority === undefined) {
+                            task.priority = PRIORITY_LEVELS.NONE;
+                        }
+                    });
+                    nextGlobalTaskId = savedNextId ? parseInt(savedNextId) : (allExtractedTasks.length > 0 ? Math.max(...allExtractedTasks.map(t => t.globalId || 0)) + 1 : 1);
+                    lastProcessedFileNames = savedFileNames ? JSON.parse(savedFileNames) : [];
+                    
+                    if (allExtractedTasks.length > 0) {
+                        identifyAndMarkDuplicates();
+                        updateStatistics();
+                        populateFilterOptions();
+                        displayResults(allExtractedTasks);
+                        showSuccess(`${allExtractedTasks.length} משימות נטענו מהאחסון המקומי.`);
+                    }
+                }
+            } catch (e) {
+                showError("שגיאה בטעינת נתונים מהאחסון המקומי.");
+                console.error("Error loading from localStorage:", e);
+                localStorage.removeItem('savedTasks');
+                localStorage.removeItem('nextGlobalTaskId');
+                localStorage.removeItem('lastProcessedFileNames');
+            }
+        }
+
+
+        function switchToUploadView() {
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('filtersSection').style.display = 'none';
+            document.getElementById('uploadSection').style.display = 'block';
+            document.getElementById('processing').style.display = 'none';
+            if (fileInput) fileInput.value = '';
+            hideMessages();
+            document.getElementById('debugSection').style.display = 'none';
+            document.getElementById('debugContent').textContent = '';
+        }
+
+        function showProcessing() {
+            document.getElementById('processing').style.display = 'block';
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('filtersSection').style.display = 'none';
+            processingMessageElement.textContent = 'מתחיל עיבוד...';
+        }
+
+        function hideProcessing() {
+            document.getElementById('processing').style.display = 'none';
+            processingMessageElement.textContent = '';
+        }
+        
+        function showError(message) { 
+            const el = document.getElementById('errorMessage'); 
+            el.textContent = message; 
+            el.style.display = 'block'; 
+        }
+        
+        function showSuccess(message) { 
+            const el = document.getElementById('successMessage'); 
+            el.textContent = message; 
+            el.style.display = 'block'; 
+            setTimeout(() => el.style.display = 'none', 5000); 
+        }
+        
+        function showDebug(message) {
+            const ds = document.getElementById('debugSection');
+            const dc = document.getElementById('debugContent');
+            ds.style.display = 'block';
+            dc.textContent += message + '\n'; 
+            console.log("DEBUG: " + message);
+        }
+        
+        function hideMessages() {
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTasksFromLocalStorage(); 
+            hideMessages();
+            document.getElementById('debugSection').style.display = 'none';
+            document.getElementById('debugContent').textContent = '';
+            updateStatistics(); 
+        });
+    </script>
+</body>
+</html>
