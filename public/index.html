@@ -251,6 +251,8 @@
         
         .btn-calendar { background-color: #28a745; color: white; }
         .btn-calendar:hover { background-color: #218838; }
+        .btn-ics { background-color: #007bff; color: white; } 
+        .btn-ics:hover { background-color: #0056b3; }
         .btn-delete { background-color: #dc3545; color: white; }
         .btn-delete:hover { background-color: #c82333; }
         .btn-reminder { background-color: #17a2b8; color: white; }
@@ -299,26 +301,28 @@
             margin-bottom: 0;
         }
 
+        .tasks-table th, .tasks-table td {
+            padding: 10px; 
+            text-align: right;
+            border-bottom: 1px solid #e9ecef;
+            vertical-align: top;
+        }
         .tasks-table th {
             background: #667eea;
             color: white;
-            padding: 12px;
-            text-align: right;
             font-weight: 600;
-            font-size: 1em;
-        }
-
-        .tasks-table td {
-            padding: 12px;
-            border-bottom: 1px solid #e9ecef;
-            text-align: right;
-            vertical-align: top;
+            font-size: 0.95em; 
         }
         
         .tasks-table td.action-cell {
             text-align: center;
             white-space: nowrap;
         }
+        .tasks-table td.selection-cell, .tasks-table th.selection-cell {
+            text-align: center;
+            vertical-align: middle;
+        }
+
         
         .tasks-table tr.priority-low { background-color: #e6ffed !important; }
         .tasks-table tr.priority-medium { background-color: #fff3cd !important; }
@@ -326,7 +330,7 @@
         .tasks-table tr.priority-low:hover { background-color: #d4f8e0 !important; }
         .tasks-table tr.priority-medium:hover { background-color: #ffeeba !important; }
         .tasks-table tr.priority-high:hover { background-color: #f5c6cb !important; }
-        .tasks-table tr.duplicate-task { opacity: 0.6; } 
+        /* .tasks-table tr.duplicate-task { opacity: 0.6; } */ /* User requested to remove visual indication */
 
         .tasks-table tr:hover {
             background: #f8f7ff;
@@ -432,7 +436,6 @@
             font-size: 0.9em;
         }
 
-        /* Statistics Dashboard */
         .stats-dashboard {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -595,6 +598,9 @@
                     📂 טען מקובץ JSON
                 </button>
                 <input type="file" id="importFileInput" style="display: none;" accept=".json" onchange="importFromJSON(event)">
+                <button class="btn-export btn-ics" onclick="exportSelectedOrAllToICS()">
+                    📩 ייצא בחירה/הכל ל-Outlook (ics)
+                </button>
             </div>
 
             <div class="filters-section" id="filtersSection">
@@ -643,12 +649,13 @@
                 <table class="tasks-table" id="tasksTableStaffMeeting">
                     <thead>
                         <tr>
+                            <th style="width: 3%;" class="selection-cell"><input type="checkbox" id="selectAllStaffCheckbox" onchange="toggleSelectAll('staff')"></th>
                             <th style="width: 5%;">מס' כללי</th>
                             <th style="width: 18%;">נושא</th>
                             <th style="width: 22%;">משימה</th>
                             <th style="width: 12%;">אחראי</th>
                             <th style="width: 10%;">תאריך פרוטוקול</th>
-                            <th style="width: 23%;">פעולות</th>
+                            <th style="width: 20%;">פעולות</th> 
                         </tr>
                     </thead>
                     <tbody id="tasksTableBodyStaffMeeting">
@@ -661,9 +668,10 @@
                 <table class="tasks-table" id="tasksTableManagement">
                     <thead>
                         <tr>
+                            <th style="width: 3%;" class="selection-cell"><input type="checkbox" id="selectAllManagementCheckbox" onchange="toggleSelectAll('management')"></th>
                             <th style="width: 5%;">מס' כללי</th>
                             <th style="width: 12%;">סעיף</th>
-                            <th style="width: 18%;">החלטה/המשך טיפול</th>
+                            <th style="width: 15%;">החלטה/המשך טיפול</th>
                             <th style="width: 10%;">אחראי</th>
                             <th style="width: 10%;">לוח זמנים</th>
                             <th style="width: 10%;">תאריך פרוטוקול</th>
@@ -682,6 +690,8 @@
         let lastProcessedFileNames = [];
         let currentFilters = { responsible: 'all', section: 'all', timeline: 'all', protocolDate: 'all', priority: 'all' };
         let nextGlobalTaskId = 1;
+        let selectedTaskGlobalIds = new Set();
+
 
         const PRIORITY_LEVELS = {
             NONE: 0,
@@ -702,7 +712,6 @@
             [PRIORITY_LEVELS.HIGH]: "priority-high"
         };
 
-        // File handling
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
         const processingMessageElement = document.getElementById('processingMessage');
@@ -1193,11 +1202,18 @@
             lastProcessedFileNames = [];
             currentFilters = { responsible: 'all', section: 'all', timeline: 'all', protocolDate: 'all', priority: 'all' };
             nextGlobalTaskId = 1;
+            selectedTaskGlobalIds.clear(); 
 
             document.getElementById('tasksTableBodyStaffMeeting').innerHTML = '';
             document.getElementById('tasksTableBodyManagement').innerHTML = '';
             document.getElementById('divStaffMeetingTasks').style.display = 'none';
             document.getElementById('divManagementTasks').style.display = 'none';
+
+            const selectAllStaff = document.getElementById('selectAllStaffCheckbox');
+            if (selectAllStaff) selectAllStaff.checked = false;
+            const selectAllManagement = document.getElementById('selectAllManagementCheckbox');
+            if (selectAllManagement) selectAllManagement.checked = false;
+
 
             document.getElementById('filterResponsible').innerHTML = '<option value="all">הכל</option>';
             document.getElementById('filterSection').innerHTML = '<option value="all">הכל</option>';
@@ -1221,6 +1237,7 @@
             localStorage.removeItem('savedTasks');
             localStorage.removeItem('nextGlobalTaskId');
             localStorage.removeItem('lastProcessedFileNames');
+            localStorage.removeItem('selectedTaskGlobalIds');
 
 
             console.log("All data cleared including localStorage");
@@ -1231,6 +1248,7 @@
             const taskIndex = allExtractedTasks.findIndex(task => task.globalId === globalId);
             if (taskIndex > -1) {
                 allExtractedTasks.splice(taskIndex, 1);
+                selectedTaskGlobalIds.delete(globalId); 
                 showSuccess("המשימה נמחקה.");
                 identifyAndMarkDuplicates();
                 saveTasksToLocalStorage();
@@ -1310,6 +1328,52 @@
             }
         }
 
+        function toggleTaskSelection(globalId, isChecked) {
+            if (isChecked) {
+                selectedTaskGlobalIds.add(globalId);
+            } else {
+                selectedTaskGlobalIds.delete(globalId);
+            }
+            showDebug(`Selected tasks: ${selectedTaskGlobalIds.size}`);
+            updateSelectAllCheckboxesState();
+        }
+
+        function toggleSelectAll(tableType) {
+            const isChecked = (tableType === 'staff') ? 
+                              document.getElementById('selectAllStaffCheckbox').checked : 
+                              document.getElementById('selectAllManagementCheckbox').checked;
+            
+            const tasksInTable = (tableType === 'staff') ? 
+                                 getFilteredTasks().filter(t => t.documentType === 'ישיבת מטה') :
+                                 getFilteredTasks().filter(t => t.documentType === 'סיכום הנהלה');
+
+            tasksInTable.forEach(task => {
+                const checkbox = document.querySelector(`.task-checkbox[value="${task.globalId}"]`);
+                if (checkbox) checkbox.checked = isChecked;
+                if (isChecked) {
+                    selectedTaskGlobalIds.add(task.globalId);
+                } else {
+                    selectedTaskGlobalIds.delete(task.globalId);
+                }
+            });
+            showDebug(`Selected tasks after 'Select All' (${tableType}): ${selectedTaskGlobalIds.size}`);
+        }
+        
+        function updateSelectAllCheckboxesState() {
+            const staffTasksInView = getFilteredTasks().filter(t => t.documentType === 'ישיבת מטה');
+            const managementTasksInView = getFilteredTasks().filter(t => t.documentType === 'סיכום הנהלה');
+
+            const allStaffVisibleSelected = staffTasksInView.length > 0 && staffTasksInView.every(t => selectedTaskGlobalIds.has(t.globalId));
+            const allManagementVisibleSelected = managementTasksInView.length > 0 && managementTasksInView.every(t => selectedTaskGlobalIds.has(t.globalId));
+
+            const selectAllStaffCheckbox = document.getElementById('selectAllStaffCheckbox');
+            if (selectAllStaffCheckbox) selectAllStaffCheckbox.checked = allStaffVisibleSelected;
+            
+            const selectAllManagementCheckbox = document.getElementById('selectAllManagementCheckbox');
+            if (selectAllManagementCheckbox) selectAllManagementCheckbox.checked = allManagementVisibleSelected;
+        }
+
+
         function displayResults(tasksToDisplay = allExtractedTasks) {
             const resultsSection = document.getElementById('resultsSection');
             const fileInfo = document.getElementById('fileInfo');
@@ -1363,11 +1427,12 @@
                 staffMeetingTasks.forEach((task) => {
                     const row = tasksTableBodyStaffMeeting.insertRow();
                     row.className = PRIORITY_CLASS[task.priority] || '';
-                    // if (task.isDuplicate) row.className += ' duplicate-task'; // Removed visual duplicate marking
                     
                     row.innerHTML = `
+                        <td class="selection-cell"><input type="checkbox" class="task-checkbox" value="${task.globalId}" onchange="toggleTaskSelection(${task.globalId}, this.checked)" ${selectedTaskGlobalIds.has(task.globalId) ? 'checked' : ''}></td>
                         <td class="task-number">${task.globalId}</td>
                         <td class="section-name">
+                            ${task.isDuplicate ? '<span class="duplicate-indicator">(כפילות)</span>' : ''}
                             ${task.section || ''}
                         </td>
                         <td class="task-description">${task.taskDescription || ''}</td>
@@ -1376,6 +1441,7 @@
                         <td class="action-cell">
                             <button class="btn-action btn-reminder" onclick="setTaskReminder(${task.globalId})" title="הגדר תזכורת">⏰</button>
                             <button class="btn-action btn-calendar" onclick="addTaskToCalendar(${task.globalId})" title="הוסף ליומן Google">📅</button>
+                            <button class="btn-action btn-ics" onclick="exportSingleTaskToICS(${task.globalId})" title="ייצא ל-Outlook (ics)">📩</button>
                             <button class="btn-action btn-priority ${PRIORITY_CLASS[task.priority] || ''}" onclick="togglePriority(${task.globalId})" title="שנה תעדוף">${PRIORITY_TEXT[task.priority]}</button>
                             <button class="btn-action btn-delete" onclick="deleteTask(${task.globalId})" title="מחק משימה">🗑️</button>
                         </td>
@@ -1390,11 +1456,12 @@
                 managementTasks.forEach((task) => {
                     const row = tasksTableBodyManagement.insertRow();
                     row.className = PRIORITY_CLASS[task.priority] || '';
-                    // if (task.isDuplicate) row.className += ' duplicate-task'; // Removed visual duplicate marking
                     const timelineClass = (task.timeline === 'לא צוין' || task.timeline === '' || task.timeline === 'לא רלוונטי') ? 'no-date' : 'timeline';
                     row.innerHTML = `
+                        <td class="selection-cell"><input type="checkbox" class="task-checkbox" value="${task.globalId}" onchange="toggleTaskSelection(${task.globalId}, this.checked)" ${selectedTaskGlobalIds.has(task.globalId) ? 'checked' : ''}></td>
                         <td class="task-number">${task.globalId}</td>
                         <td class="section-name">
+                             ${task.isDuplicate ? '<span class="duplicate-indicator">(כפילות)</span>' : ''}
                             ${task.section || ''}
                         </td>
                         <td class="task-description">${task.taskDescription || ''}</td>
@@ -1404,6 +1471,7 @@
                         <td class="action-cell">
                             <button class="btn-action btn-reminder" onclick="setTaskReminder(${task.globalId})" title="הגדר תזכורת">⏰</button>
                             <button class="btn-action btn-calendar" onclick="addTaskToCalendar(${task.globalId})" title="הוסף ליומן Google">📅</button>
+                            <button class="btn-action btn-ics" onclick="exportSingleTaskToICS(${task.globalId})" title="ייצא ל-Outlook (ics)">📩</button>
                             <button class="btn-action btn-priority ${PRIORITY_CLASS[task.priority] || ''}" onclick="togglePriority(${task.globalId})" title="שנה תעדוף">${PRIORITY_TEXT[task.priority]}</button>
                             <button class="btn-action btn-delete" onclick="deleteTask(${task.globalId})" title="מחק משימה">🗑️</button>
                         </td>
@@ -1413,6 +1481,7 @@
                 divManagementTasks.style.display = 'none';
             }
             
+            updateSelectAllCheckboxesState(); 
             resultsSection.style.display = 'block';
             filtersSection.style.display = allExtractedTasks.length > 0 ? 'flex' : 'none';
             document.getElementById('uploadSection').style.display = 'none';
@@ -1436,7 +1505,145 @@
             return `${year}${month}${day}`;
         }
 
-        function addTaskToCalendar(globalId) {
+        function formatDateForICS(dateObj) { 
+            if (!dateObj) return '';
+            return `${dateObj.year}${String(dateObj.month).padStart(2, '0')}${String(dateObj.day).padStart(2, '0')}`;
+        }
+        
+        function formatDateTimeForICS(date) { 
+            return date.getUTCFullYear() +
+                String(date.getUTCMonth() + 1).padStart(2, '0') +
+                String(date.getUTCDate()).padStart(2, '0') +
+                'T' +
+                String(date.getUTCHours()).padStart(2, '0') +
+                String(date.getUTCMinutes()).padStart(2, '0') +
+                String(date.getUTCSeconds()).padStart(2, '0') +
+                'Z';
+        }
+
+        function generateICSContent(tasks) { // Renamed parameter
+            const now = new Date();
+            const dtstamp = formatDateTimeForICS(now);
+            let icsEvents = [];
+
+            tasks.forEach(task => {
+                let startDateObj = null;
+                if (task.documentType === 'ישיבת מטה') {
+                     if (task.protocolDate && task.protocolDate !== "לא ידוע") {
+                        startDateObj = parseTaskDateForCalendar(task.protocolDate);
+                    }
+                } else {
+                    const timelineLower = (task.timeline || '').toLowerCase();
+                    const dateRegex = /(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})/;
+                    if (timelineLower !== 'לא צוין' && timelineLower.trim() !== '' && timelineLower !== 'לא רלוונטי') {
+                        const match = timelineLower.match(dateRegex);
+                         if (match && match[1]) {
+                            let parts = match[1].replace(/[./]/g, '-').split('-');
+                            if (parts.length === 3) {
+                                 let year = parts[2], month = parts[1], day = parts[0];
+                                 if (parts[0].length === 4) { year = parts[0]; month = parts[1]; day = parts[2]; }
+                                 else if (parts[2].length === 2) { year = `20${parts[2]}`; }
+                                 startDateObj = parseTaskDateForCalendar(`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`);
+                            }
+                        }
+                    }
+                    if (!startDateObj && task.protocolDate && task.protocolDate !== "לא ידוע") {
+                        startDateObj = parseTaskDateForCalendar(task.protocolDate);
+                    }
+                }
+
+                if (startDateObj) {
+                    const dtstart = formatDateForICS(startDateObj);
+                    let endDateForICS = new Date(startDateObj.year, startDateObj.month - 1, startDateObj.day);
+                    endDateForICS.setDate(endDateForICS.getDate() + 1);
+                    const dtend = formatDateForICS({year: endDateForICS.getFullYear(), month: endDateForICS.getMonth() + 1, day: endDateForICS.getDate()});
+                    const uid = `task-${task.globalId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}@taskextractor.com`;
+
+                    const eventContent = [
+                        "BEGIN:VEVENT",
+                        `UID:${uid}`,
+                        `DTSTAMP:${dtstamp}`,
+                        `DTSTART;VALUE=DATE:${dtstart}`,
+                        `DTEND;VALUE=DATE:${dtend}`,
+                        `SUMMARY:${task.taskDescription.replace(/(\r\n|\n|\r)/gm, "\\n")}`,
+                        `DESCRIPTION:אחראי: ${task.responsible || 'לא צוין'}\\nסעיף/נושא: ${task.section || 'לא צוין'}\\n` +
+                        (task.documentType !== 'ישיבת מטה' ? `לוח זמנים מקורי: ${task.timeline || 'לא צוין'}\\n` : '') +
+                        `תאריך פרוטוקול: ${formatDateForDisplay(task.protocolDate)}\\nסוג מסמך: ${task.documentType || 'לא ידוע'}`,
+                        `X-MICROSOFT-CDO-BUSYSTATUS:FREE`,
+                        `X-MICROSOFT-CDO-ALLDAYEVENT:TRUE`,
+                        "END:VEVENT"
+                    ].join("\r\n");
+                    icsEvents.push(eventContent);
+                } else {
+                    showDebug(`Skipping task ${task.globalId} for ICS export due to missing date.`);
+                }
+            });
+
+            if (icsEvents.length === 0) return null;
+
+            return [
+                "BEGIN:VCALENDAR",
+                "VERSION:2.0",
+                "PRODID:-//TaskExtractor//NONSGML v1.0//EN",
+                ...icsEvents,
+                "END:VCALENDAR"
+            ].join("\r\n");
+        }
+        
+        // Renamed from exportTaskToICS to exportSingleTaskToICS for clarity
+        function exportSingleTaskToICS(globalId) { 
+            const task = allExtractedTasks.find(t => t.globalId === globalId);
+            if (!task) {
+                showError("משימה לא נמצאה לייצוא ל-ICS.");
+                return;
+            }
+            const icsContent = generateICSContent([task]); // Pass as an array
+            if (icsContent) {
+                downloadICSFile(icsContent, `משימה_${task.globalId}.ics`);
+                showSuccess(`קובץ ICS נוצר עבור משימה: ${task.globalId}. אנא פתח אותו כדי להוסיף ל-Outlook.`);
+            } else {
+                showError(`לא ניתן היה ליצור קובץ ICS עבור משימה ${task.globalId} (ייתכן שחסר תאריך).`);
+            }
+        }
+        
+        function exportSelectedOrAllToICS() {
+            showDebug("exportSelectedOrAllToICS function called.");
+            let tasksToExport;
+            if (selectedTaskGlobalIds.size > 0) {
+                tasksToExport = allExtractedTasks.filter(task => selectedTaskGlobalIds.has(task.globalId));
+                showDebug(`Exporting ${selectedTaskGlobalIds.size} selected tasks to ICS.`);
+            } else {
+                tasksToExport = getFilteredTasks();
+                if (tasksToExport.length === 0) {
+                    showError("אין משימות לייצוא (לא נבחרו משימות ולא מוצגות משימות מסוננות).");
+                    return;
+                }
+                showDebug(`No tasks selected, exporting ${tasksToExport.length} currently displayed/filtered tasks to ICS.`);
+            }
+
+            const icsContent = generateICSContent(tasksToExport);
+            if (icsContent) {
+                downloadICSFile(icsContent, `משימות_Outlook_${new Date().toISOString().split('T')[0]}.ics`);
+                showSuccess(`${tasksToExport.length} משימות יוצאו לקובץ ICS. אנא פתח אותו כדי להוסיף ל-Outlook.`);
+            } else {
+                 showError("לא נוצר קובץ ICS (ייתכן שלא נמצאו תאריכים תקינים במשימות שנבחרו).");
+            }
+        }
+
+        function downloadICSFile(icsContent, fileName) {
+            const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', fileName);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+
+        function addTaskToCalendar(globalId) { // For Google Calendar
             const task = allExtractedTasks.find(t => t.globalId === globalId);
             if (!task) {
                 showError("משימה לא נמצאה.");
@@ -1511,19 +1718,32 @@
         }
 
         function copyToClipboard() {
-            if (allExtractedTasks.length === 0) { showError("אין משימות להעתקה."); return; }
+            showDebug("copyToClipboard function called.");
+            let tasksToCopy;
+            if (selectedTaskGlobalIds.size > 0) {
+                tasksToCopy = allExtractedTasks.filter(task => selectedTaskGlobalIds.has(task.globalId));
+                showDebug(`Copying ${selectedTaskGlobalIds.size} selected tasks.`);
+            } else {
+                tasksToCopy = getFilteredTasks();
+                if (tasksToCopy.length === 0) {
+                    showError("אין משימות להעתקה (לא נבחרו משימות ולא מוצגות משימות מסוננות).");
+                    return;
+                }
+                showDebug(`No tasks selected, copying ${tasksToCopy.length} currently displayed/filtered tasks.`);
+            }
             
-            const staffMeetingTasks = allExtractedTasks.filter(task => task.documentType === 'ישיבת מטה');
-            const managementTasks = allExtractedTasks.filter(task => task.documentType === 'סיכום הנהלה');
+            const staffMeetingTasks = tasksToCopy.filter(task => task.documentType === 'ישיבת מטה');
+            const managementTasks = tasksToCopy.filter(task => task.documentType === 'סיכום הנהלה');
 
-            let text = `משימות מרוכזות (סה"כ: ${allExtractedTasks.length})\n`;
-            if (lastProcessedFileNames.length > 0) {
+            let text = `משימות מרוכזות (סה"כ ${tasksToCopy.length} משימות הועתקו)\n`;
+            if (lastProcessedFileNames.length > 0 && selectedTaskGlobalIds.size === 0) { 
                 text += `(מתוך קבצים: ${lastProcessedFileNames.join(', ')})\n`;
             }
-            let totalDuplicates = allExtractedTasks.filter(t => t.isDuplicate).length;
-            if (totalDuplicates > 0) {
-                text += `(זוהו ${totalDuplicates} משימות כפולות ברשימה הכוללת)\n`;
+            let totalDuplicatesInSelection = tasksToCopy.filter(t => t.isDuplicate).length;
+            if (totalDuplicatesInSelection > 0) {
+                text += `(מתוכן ${totalDuplicatesInSelection} משימות כפולות)\n`;
             }
+
 
             const getPriorityTextForCopy = (priorityLevel) => {
                 const priorityKeys = ['ללא', 'נמוך', 'בינוני', 'גבוה']; 
@@ -1547,7 +1767,7 @@
             }
             
             if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).then(() => showSuccess('כל המשימות הועתקו!'))
+                navigator.clipboard.writeText(text).then(() => showSuccess('המשימות שנבחרו/סוננו הועתקו!'))
                 .catch(err => { showError('שגיאה בהעתקה: ' + err.message); legacyCopyToClipboard(text); });
             } else { legacyCopyToClipboard(text); }
         }
@@ -1557,7 +1777,7 @@
             ta.style.position='fixed'; ta.style.top='-9999px'; document.body.appendChild(ta);
             ta.focus(); ta.select();
             try {
-                if(document.execCommand('copy')) showSuccess('כל המשימות הועתקו (שיטה ישנה)!');
+                if(document.execCommand('copy')) showSuccess('המשימות שנבחרו/סוננו הועתקו (שיטה ישנה)!');
                 else showError('העתקה נכשלה (שיטה ישנה).');
             } catch (err) { showError('שגיאה בהעתקה (שיטה ישנה): ' + err.message); }
             document.body.removeChild(ta);
@@ -1565,13 +1785,22 @@
 
         function exportToExcel() { 
             showDebug("exportToExcel function called.");
-            if (allExtractedTasks.length === 0) {
-                showError("אין משימות לייצוא.");
-                showDebug("No tasks to export.");
-                return;
+            let tasksForExport;
+            if (selectedTaskGlobalIds.size > 0) {
+                tasksForExport = allExtractedTasks.filter(task => selectedTaskGlobalIds.has(task.globalId));
+                showDebug(`Exporting ${selectedTaskGlobalIds.size} selected tasks to CSV.`);
+            } else {
+                tasksForExport = getFilteredTasks();
+                if (tasksForExport.length === 0) {
+                    showError("אין משימות לייצוא (לא נבחרו משימות ולא מוצגות משימות מסוננות).");
+                    showDebug("No tasks to export (neither selected nor filtered).");
+                    return;
+                }
+                showDebug(`No tasks selected, exporting ${tasksForExport.length} currently displayed/filtered tasks to CSV.`);
             }
+            
             showDebug("Creating CSV content...");
-            const csvContent = createCSVContent();
+            const csvContent = createCSVContent(tasksForExport);
             showDebug("CSV content created. Length: " + csvContent.length);
             
             try {
@@ -1588,7 +1817,7 @@
                 showDebug("Link clicked.");
                 document.body.removeChild(link);
                 showDebug("Link removed from body.");
-                URL.revokeObjectURL(url); // Clean up the object URL
+                URL.revokeObjectURL(url); 
                 showSuccess('המשימות יוצאו בהצלחה לקובץ CSV (ניתן לפתוח באקסל)!');
             } catch (e) {
                 showError("שגיאה בתהליך ייצוא הקובץ: " + e.message);
@@ -1597,34 +1826,43 @@
             }
         }
 
-        function createCSVContent() {
-            showDebug("createCSVContent function called.");
+        function createCSVContent(tasksToExport) { 
+            showDebug("createCSVContent function called for " + tasksToExport.length + " tasks.");
             let csv = 'מס\' כללי,סוג מסמך,נושא/סעיף,משימה/החלטה,אחראי,לוח זמנים,תאריך פרוטוקול,תעדוף,כפילות\n';
             const getPriorityTextForCopy = (priorityLevel) => {
                 const priorityKeys = ['ללא', 'נמוך', 'בינוני', 'גבוה'];
                 return priorityKeys[priorityLevel] || 'ללא';
             }
+            const escapeCSV = (field) => `"${String(field === undefined || field === null ? '' : field).replace(/"/g, '""')}"`;
             
-            allExtractedTasks.forEach(task => {
-                const escapeCSV = (field) => `"${String(field === undefined || field === null ? '' : field).replace(/"/g, '""')}"`;
+            tasksToExport.forEach(task => {
                 csv += `${task.globalId || ''},${escapeCSV(task.documentType)},${escapeCSV(task.section)},${escapeCSV(task.taskDescription)},${escapeCSV(task.responsible)},${escapeCSV(task.timeline)},${escapeCSV(formatDateForDisplay(task.protocolDate))},${escapeCSV(getPriorityTextForCopy(task.priority))},${escapeCSV(task.isDuplicate ? 'כן' : 'לא')}\n`;
             });
-            showDebug("CSV content generation complete. First 100 chars: " + csv.substring(0,100));
+            showDebug("CSV content generation complete for export. First 100 chars: " + csv.substring(0,100));
             return csv;
         }
 
         function exportToJSON() {
             showDebug("exportToJSON function called.");
-            if (allExtractedTasks.length === 0) {
-                showError("אין משימות לייצוא.");
-                showDebug("No tasks to export for JSON.");
-                return;
+            let tasksForExport;
+            if (selectedTaskGlobalIds.size > 0) {
+                tasksForExport = allExtractedTasks.filter(task => selectedTaskGlobalIds.has(task.globalId));
+                showDebug(`Exporting ${selectedTaskGlobalIds.size} selected tasks to JSON.`);
+            } else {
+                tasksForExport = getFilteredTasks();
+                 if (tasksForExport.length === 0) {
+                    showError("אין משימות לייצוא (לא נבחרו משימות ולא מוצגות משימות מסוננות).");
+                    showDebug("No tasks to export for JSON (neither selected nor filtered).");
+                    return;
+                }
+                showDebug(`No tasks selected, exporting ${tasksForExport.length} currently displayed/filtered tasks to JSON.`);
             }
+
             const dataToExport = {
                 exportDate: new Date().toISOString(),
-                totalTasks: allExtractedTasks.length,
+                totalTasksInSelection: tasksForExport.length,
                 nextGlobalTaskId: nextGlobalTaskId, 
-                tasks: allExtractedTasks
+                tasks: tasksForExport 
             };
             showDebug("Data for JSON export prepared.");
             
@@ -1637,7 +1875,7 @@
                 const url = URL.createObjectURL(blob);
                 showDebug("JSON Blob URL created: " + url);
                 link.setAttribute('href', url);
-                link.setAttribute('download', `משימות_${new Date().toISOString().split('T')[0]}.json`);
+                link.setAttribute('download', `משימות_בחירה_${new Date().toISOString().split('T')[0]}.json`);
                 document.body.appendChild(link);
                 showDebug("JSON Link appended to body. Clicking link...");
                 link.click();
@@ -1645,7 +1883,7 @@
                 document.body.removeChild(link);
                 showDebug("JSON Link removed from body.");
                 URL.revokeObjectURL(url);
-                showSuccess('המשימות נשמרו בהצלחה כקובץ JSON!');
+                showSuccess('המשימות שנבחרו/סוננו נשמרו בהצלחה כקובץ JSON!');
             } catch (e) {
                 showError("שגיאה בתהליך ייצוא ה-JSON: " + e.message);
                 showDebug("Error during JSON export process: " + e.message + "\nStack: " + e.stack);
@@ -1714,6 +1952,7 @@
                 localStorage.setItem('savedTasks', JSON.stringify(allExtractedTasks));
                 localStorage.setItem('nextGlobalTaskId', nextGlobalTaskId.toString());
                 localStorage.setItem('lastProcessedFileNames', JSON.stringify(lastProcessedFileNames));
+                localStorage.setItem('selectedTaskGlobalIds', JSON.stringify(Array.from(selectedTaskGlobalIds))); 
                 showDebug("Tasks saved to localStorage.");
             } catch (e) {
                 showError("שגיאה בשמירת נתונים לדפדפן. ייתכן והאחסון מלא.");
@@ -1726,6 +1965,8 @@
                 const saved = localStorage.getItem('savedTasks');
                 const savedNextId = localStorage.getItem('nextGlobalTaskId');
                 const savedFileNames = localStorage.getItem('lastProcessedFileNames');
+                const savedSelectedIds = localStorage.getItem('selectedTaskGlobalIds');
+
 
                 if (saved) {
                     allExtractedTasks = JSON.parse(saved);
@@ -1736,6 +1977,8 @@
                     });
                     nextGlobalTaskId = savedNextId ? parseInt(savedNextId) : (allExtractedTasks.length > 0 ? Math.max(...allExtractedTasks.map(t => t.globalId || 0)) + 1 : 1);
                     lastProcessedFileNames = savedFileNames ? JSON.parse(savedFileNames) : [];
+                    selectedTaskGlobalIds = savedSelectedIds ? new Set(JSON.parse(savedSelectedIds)) : new Set();
+
                     
                     if (allExtractedTasks.length > 0) {
                         identifyAndMarkDuplicates();
@@ -1751,6 +1994,7 @@
                 localStorage.removeItem('savedTasks');
                 localStorage.removeItem('nextGlobalTaskId');
                 localStorage.removeItem('lastProcessedFileNames');
+                localStorage.removeItem('selectedTaskGlobalIds');
             }
         }
 
@@ -1816,3 +2060,7 @@
     </script>
 </body>
 </html>
+
+
+
+
