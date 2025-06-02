@@ -130,7 +130,7 @@
         }
 
         .results-section {
-            padding: 40px;
+            padding: 20px; 
             display: none;
         }
 
@@ -148,23 +148,24 @@
             margin-bottom: 10px;
         }
         
-        .filters-section {
-            display: none; 
+        .control-panel-section { 
             margin-bottom: 20px; 
-            padding: 15px; 
-            background: #e9ecef; 
-            border-radius: 8px; 
+            padding: 20px; 
+            background: #f8f9fc; 
+            border-radius: 12px; 
             display: flex; 
             gap: 15px; 
             align-items: center; 
             flex-wrap: wrap;
-            border: 1px solid #dee2e6;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
         }
 
-        .filters-section h4 {
+        .filters-section h4, .export-import-section h4 { 
             margin:0 10px 0 0;
             font-size: 1.1em;
             color: #495057;
+            width: 100%; 
+            margin-bottom: 10px;
         }
         
         .filters-section label {
@@ -199,27 +200,16 @@
             background-color: #5a6268;
         }
 
-        .export-import-section {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
         .export-import-section button { 
-            padding: 10px 20px;
+            padding: 10px 15px; 
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 1em;
+            font-size: 0.95em; 
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 8px; 
             margin-bottom: 5px;
         }
 
@@ -243,33 +233,34 @@
             margin-bottom: 5px;
         }
         
-        .btn-action {
-            padding: 6px 10px;
-            font-size: 0.9em;
-            margin-left: 4px;
+        .btn-action { 
+            background: none;
+            border: none;
+            color: #555;
+            cursor: pointer;
+            padding: 5px;
+            font-size: 1.3em; 
+            transition: color 0.2s ease;
+            line-height: 1; 
         }
+        .btn-action:hover {
+            color: #667eea;
+        }
+        .btn-action.btn-delete:hover {
+            color: #dc3545;
+        }
+        .btn-action.btn-priority.priority-low:hover { color: #28a745; }
+        .btn-action.btn-priority.priority-medium:hover { color: #ffc107; }
+        .btn-action.btn-priority.priority-high:hover { color: #e53e3e; }
         
-        .btn-calendar { background-color: #28a745; color: white; }
-        .btn-calendar:hover { background-color: #218838; }
-        .btn-ics { background-color: #007bff; color: white; } 
-        .btn-ics:hover { background-color: #0056b3; }
-        .btn-delete { background-color: #dc3545; color: white; }
-        .btn-delete:hover { background-color: #c82333; }
-        .btn-reminder { background-color: #17a2b8; color: white; }
-        .btn-reminder:hover { background-color: #138496; }
-        .btn-export { background-color: #20c997; color: white; } 
-        .btn-export:hover { background-color: #1ba77e; }
-        .btn-import { background-color: #fd7e14; color: white; } 
-        .btn-import:hover { background-color: #e56b00; }
-        .btn-danger { background-color: #dc3545; color: white; }
-        .btn-danger:hover { background-color: #c82333; }
+        .btn-priority { 
+             border: none;
+        }
+        .btn-priority.priority-low .star-icon { color: #28a745; } 
+        .btn-priority.priority-medium .star-icon { color: #ffc107; } 
+        .btn-priority.priority-high .star-icon { color: #e53e3e; } 
+        .star-icon { font-size: 1.1em; } 
 
-        
-        .btn-priority { border: 1px solid #ccc; color: #333; background-color: #f8f9fa; }
-        .btn-priority.priority-low { background-color: #e6ffed; border-color: #a3e9a4; color: #155724;}
-        .btn-priority.priority-medium { background-color: #fff3cd; border-color: #ffeeba; color: #856404;}
-        .btn-priority.priority-high { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24;}
-        .btn-priority:hover { opacity: 0.8; }
 
         .btn-primary {
             background: #667eea;
@@ -286,6 +277,18 @@
         .btn-secondary:hover {
             background: #5a6268;
         }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-danger:hover { background-color: #c82333; }
+        .btn-calendar { background-color: #28a745; color: white; }
+        .btn-calendar:hover { background-color: #218838; }
+        .btn-ics { background-color: #007bff; color: white; } 
+        .btn-ics:hover { background-color: #0056b3; }
+        .btn-reminder { background-color: #17a2b8; color: white; }
+        .btn-reminder:hover { background-color: #138496; }
+        .btn-export { background-color: #20c997; color: white; } 
+        .btn-export:hover { background-color: #1ba77e; }
+        .btn-import { background-color: #fd7e14; color: white; } 
+        .btn-import:hover { background-color: #e56b00; }
         
         .tasks-table {
             width: 100%;
@@ -324,16 +327,13 @@
         }
 
         
-        .tasks-table tr.priority-low { background-color: #e6ffed !important; }
-        .tasks-table tr.priority-medium { background-color: #fff3cd !important; }
-        .tasks-table tr.priority-high { background-color: #f8d7da !important; }
-        .tasks-table tr.priority-low:hover { background-color: #d4f8e0 !important; }
-        .tasks-table tr.priority-medium:hover { background-color: #ffeeba !important; }
-        .tasks-table tr.priority-high:hover { background-color: #f5c6cb !important; }
-        /* .tasks-table tr.duplicate-task { opacity: 0.6; } */ /* User requested to remove visual indication */
+        .tasks-table tr.priority-low { background-color: #f0fff4 !important; } 
+        .tasks-table tr.priority-medium { background-color: #fffacd !important; } 
+        .tasks-table tr.priority-high { background-color: #ffe4e1 !important; } 
+
 
         .tasks-table tr:hover {
-            background: #f8f7ff;
+            background: #f1f5f9; 
         }
 
         .tasks-table tr:last-child td {
@@ -441,9 +441,10 @@
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
+            padding: 20px; 
+            background: #f8f9fc;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
 
         .stat-card {
@@ -587,7 +588,8 @@
                 </div>
             </div>
 
-            <div class="export-import-section">
+            <div class="export-import-section control-panel-section">
+                <h4>ייצוא וייבוא נתונים:</h4>
                 <button class="btn-export" onclick="exportToExcel()"> 
                     📊 ייצא ל-CSV
                 </button>
@@ -603,7 +605,7 @@
                 </button>
             </div>
 
-            <div class="filters-section" id="filtersSection">
+            <div class="filters-section control-panel-section" id="filtersSection">
                 <h4>סנן תצוגה:</h4>
                 <div>
                     <label for="filterResponsible">לפי אחראי:</label>
@@ -699,11 +701,11 @@
             MEDIUM: 2,
             HIGH: 3
         };
-        const PRIORITY_TEXT = {
-            [PRIORITY_LEVELS.NONE]: "⭐ תעדף",
-            [PRIORITY_LEVELS.LOW]: "⭐ נמוך",
-            [PRIORITY_LEVELS.MEDIUM]: "⭐⭐ בינוני",
-            [PRIORITY_LEVELS.HIGH]: "⭐⭐⭐ גבוה"
+        const PRIORITY_TEXT_MAP = { 
+            [PRIORITY_LEVELS.NONE]: "⭐", 
+            [PRIORITY_LEVELS.LOW]: "⭐",    
+            [PRIORITY_LEVELS.MEDIUM]: "⭐⭐", 
+            [PRIORITY_LEVELS.HIGH]: "⭐⭐⭐"   
         };
         const PRIORITY_CLASS = {
             [PRIORITY_LEVELS.NONE]: "",
@@ -711,6 +713,13 @@
             [PRIORITY_LEVELS.MEDIUM]: "priority-medium",
             [PRIORITY_LEVELS.HIGH]: "priority-high"
         };
+        const PRIORITY_TOOLTIP = {
+            [PRIORITY_LEVELS.NONE]: "הגדר תעדוף נמוך",
+            [PRIORITY_LEVELS.LOW]: "הגדר תעדוף בינוני",
+            [PRIORITY_LEVELS.MEDIUM]: "הגדר תעדוף גבוה",
+            [PRIORITY_LEVELS.HIGH]: "בטל תעדוף"
+        };
+
 
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
@@ -1432,7 +1441,6 @@
                         <td class="selection-cell"><input type="checkbox" class="task-checkbox" value="${task.globalId}" onchange="toggleTaskSelection(${task.globalId}, this.checked)" ${selectedTaskGlobalIds.has(task.globalId) ? 'checked' : ''}></td>
                         <td class="task-number">${task.globalId}</td>
                         <td class="section-name">
-                            ${task.isDuplicate ? '<span class="duplicate-indicator">(כפילות)</span>' : ''}
                             ${task.section || ''}
                         </td>
                         <td class="task-description">${task.taskDescription || ''}</td>
@@ -1442,7 +1450,7 @@
                             <button class="btn-action btn-reminder" onclick="setTaskReminder(${task.globalId})" title="הגדר תזכורת">⏰</button>
                             <button class="btn-action btn-calendar" onclick="addTaskToCalendar(${task.globalId})" title="הוסף ליומן Google">📅</button>
                             <button class="btn-action btn-ics" onclick="exportSingleTaskToICS(${task.globalId})" title="ייצא ל-Outlook (ics)">📩</button>
-                            <button class="btn-action btn-priority ${PRIORITY_CLASS[task.priority] || ''}" onclick="togglePriority(${task.globalId})" title="שנה תעדוף">${PRIORITY_TEXT[task.priority]}</button>
+                            <button class="btn-action btn-priority ${PRIORITY_CLASS[task.priority] || ''}" onclick="togglePriority(${task.globalId})" title="${PRIORITY_TOOLTIP[task.priority]}"><span class="star-icon">${PRIORITY_TEXT_MAP[task.priority].substring(0, task.priority +1)}</span></button>
                             <button class="btn-action btn-delete" onclick="deleteTask(${task.globalId})" title="מחק משימה">🗑️</button>
                         </td>
                     `;
@@ -1461,7 +1469,6 @@
                         <td class="selection-cell"><input type="checkbox" class="task-checkbox" value="${task.globalId}" onchange="toggleTaskSelection(${task.globalId}, this.checked)" ${selectedTaskGlobalIds.has(task.globalId) ? 'checked' : ''}></td>
                         <td class="task-number">${task.globalId}</td>
                         <td class="section-name">
-                             ${task.isDuplicate ? '<span class="duplicate-indicator">(כפילות)</span>' : ''}
                             ${task.section || ''}
                         </td>
                         <td class="task-description">${task.taskDescription || ''}</td>
@@ -1472,7 +1479,7 @@
                             <button class="btn-action btn-reminder" onclick="setTaskReminder(${task.globalId})" title="הגדר תזכורת">⏰</button>
                             <button class="btn-action btn-calendar" onclick="addTaskToCalendar(${task.globalId})" title="הוסף ליומן Google">📅</button>
                             <button class="btn-action btn-ics" onclick="exportSingleTaskToICS(${task.globalId})" title="ייצא ל-Outlook (ics)">📩</button>
-                            <button class="btn-action btn-priority ${PRIORITY_CLASS[task.priority] || ''}" onclick="togglePriority(${task.globalId})" title="שנה תעדוף">${PRIORITY_TEXT[task.priority]}</button>
+                            <button class="btn-action btn-priority ${PRIORITY_CLASS[task.priority] || ''}" onclick="togglePriority(${task.globalId})" title="${PRIORITY_TOOLTIP[task.priority]}"><span class="star-icon">${PRIORITY_TEXT_MAP[task.priority].substring(0, task.priority +1)}</span></button>
                             <button class="btn-action btn-delete" onclick="deleteTask(${task.globalId})" title="מחק משימה">🗑️</button>
                         </td>
                     `;
@@ -1493,7 +1500,7 @@
             if (parts.length === 3) {
                 return { year: parseInt(parts[0]), month: parseInt(parts[1]), day: parseInt(parts[2]) };
             }
-            showDebug(`Could not parse YYYY-MM-DD date for calendar: ${dateStringYYYYMMDD}`);
+            showDebug(`Could not parse YYYY-MM-DD date for calendar: ${dateStringYYYYMMDD}`); // Corrected debug message
             return null;
         }
 
@@ -1521,7 +1528,8 @@
                 'Z';
         }
 
-        function generateICSContent(tasks) { // Renamed parameter
+        function generateICSContent(tasks) { 
+            showDebug("generateICSContent called with " + tasks.length + " tasks.");
             const now = new Date();
             const dtstamp = formatDateTimeForICS(now);
             let icsEvents = [];
@@ -1553,6 +1561,7 @@
                 }
 
                 if (startDateObj) {
+                    showDebug(`Task ${task.globalId}: Parsed start date for ICS: ${JSON.stringify(startDateObj)}`);
                     const dtstart = formatDateForICS(startDateObj);
                     let endDateForICS = new Date(startDateObj.year, startDateObj.month - 1, startDateObj.day);
                     endDateForICS.setDate(endDateForICS.getDate() + 1);
@@ -1565,10 +1574,10 @@
                         `DTSTAMP:${dtstamp}`,
                         `DTSTART;VALUE=DATE:${dtstart}`,
                         `DTEND;VALUE=DATE:${dtend}`,
-                        `SUMMARY:${task.taskDescription.replace(/(\r\n|\n|\r)/gm, "\\n")}`,
-                        `DESCRIPTION:אחראי: ${task.responsible || 'לא צוין'}\\nסעיף/נושא: ${task.section || 'לא צוין'}\\n` +
+                        `SUMMARY:${(task.taskDescription || '').replace(/(\r\n|\n|\r)/gm, "\\n")}`,
+                        `DESCRIPTION:${('אחראי: ' + (task.responsible || 'לא צוין') + '\\nסעיף/נושא: ' + (task.section || 'לא צוין') + '\\n' +
                         (task.documentType !== 'ישיבת מטה' ? `לוח זמנים מקורי: ${task.timeline || 'לא צוין'}\\n` : '') +
-                        `תאריך פרוטוקול: ${formatDateForDisplay(task.protocolDate)}\\nסוג מסמך: ${task.documentType || 'לא ידוע'}`,
+                        `תאריך פרוטוקול: ${formatDateForDisplay(task.protocolDate)}\\nסוג מסמך: ${task.documentType || 'לא ידוע'}`).replace(/(\r\n|\n|\r)/gm, "\\n")}`,
                         `X-MICROSOFT-CDO-BUSYSTATUS:FREE`,
                         `X-MICROSOFT-CDO-ALLDAYEVENT:TRUE`,
                         "END:VEVENT"
@@ -1579,28 +1588,34 @@
                 }
             });
 
-            if (icsEvents.length === 0) return null;
+            if (icsEvents.length === 0) {
+                showDebug("No valid events generated for ICS.");
+                return null;
+            }
 
-            return [
+            const finalICS = [
                 "BEGIN:VCALENDAR",
                 "VERSION:2.0",
                 "PRODID:-//TaskExtractor//NONSGML v1.0//EN",
                 ...icsEvents,
                 "END:VCALENDAR"
             ].join("\r\n");
+            showDebug("Final ICS content generated. Length: " + finalICS.length);
+            return finalICS;
         }
         
-        // Renamed from exportTaskToICS to exportSingleTaskToICS for clarity
         function exportSingleTaskToICS(globalId) { 
+            showDebug(`exportSingleTaskToICS called for globalId: ${globalId}`);
             const task = allExtractedTasks.find(t => t.globalId === globalId);
             if (!task) {
                 showError("משימה לא נמצאה לייצוא ל-ICS.");
+                showDebug(`Task with globalId ${globalId} not found for ICS export.`);
                 return;
             }
-            const icsContent = generateICSContent([task]); // Pass as an array
+            const icsContent = generateICSContent([task]); 
             if (icsContent) {
                 downloadICSFile(icsContent, `משימה_${task.globalId}.ics`);
-                showSuccess(`קובץ ICS נוצר עבור משימה: ${task.globalId}. אנא פתח אותו כדי להוסיף ל-Outlook.`);
+                showSuccess(`קובץ ICS נוצר עבור משימה ${task.globalId}. אנא פתח אותו כדי להוסיף ל-Outlook.`);
             } else {
                 showError(`לא ניתן היה ליצור קובץ ICS עבור משימה ${task.globalId} (ייתכן שחסר תאריך).`);
             }
@@ -1616,6 +1631,7 @@
                 tasksToExport = getFilteredTasks();
                 if (tasksToExport.length === 0) {
                     showError("אין משימות לייצוא (לא נבחרו משימות ולא מוצגות משימות מסוננות).");
+                    showDebug("No tasks to export for ICS (neither selected nor filtered).");
                     return;
                 }
                 showDebug(`No tasks selected, exporting ${tasksToExport.length} currently displayed/filtered tasks to ICS.`);
@@ -1631,15 +1647,25 @@
         }
 
         function downloadICSFile(icsContent, fileName) {
-            const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', fileName);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+            showDebug(`downloadICSFile called for: ${fileName}`);
+            try {
+                const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
+                showDebug(`ICS Blob created. Type: ${blob.type}, Size: ${blob.size}`);
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                showDebug(`ICS Blob URL: ${url}`);
+                link.setAttribute('href', url);
+                link.setAttribute('download', fileName);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                showDebug(`ICS file download initiated for ${fileName}`);
+            } catch (e) {
+                showError("שגיאה בתהליך הורדת קובץ ICS: " + e.message);
+                showDebug("Error during ICS download process: " + e.message + "\nStack: " + e.stack);
+                console.error("ICS Download error:", e);
+            }
         }
 
 
@@ -2060,7 +2086,3 @@
     </script>
 </body>
 </html>
-
-
-
-
