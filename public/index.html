@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>כלי חילוץ וניהול משימות מסיכומי ישיבות - גרסה משופרת</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <style>
         * {
             margin: 0;
@@ -557,15 +558,9 @@
             <div class="results-header">
                 <h2>משימות שחולצו</h2>
                 <div class="action-buttons">
-                    <button class="btn btn-primary" onclick="copyToClipboard()">
-                        📋 העתק לזיכרון
-                    </button>
-                    <button class="btn btn-secondary" onclick="switchToUploadView()">
-                        🔄 הוסף קבצים נוספים
-                    </button>
-                    <button class="btn btn-danger" onclick="confirmClearAllData()">
-                        🗑️ נקה הכל
-                    </button>
+                    <button class="btn btn-primary" id="copyClipboardBtn">📋 העתק לזיכרון</button>
+                    <button class="btn btn-secondary" id="switchToUploadBtn">🔄 הוסף קבצים נוספים</button>
+                    <button class="btn btn-danger" id="clearAllBtn">🗑️ נקה הכל</button>
                 </div>
             </div>
 
@@ -590,18 +585,18 @@
 
             <div class="export-import-section control-panel-section">
                 <h4>ייצוא וייבוא נתונים:</h4>
-                <button class="btn-export" onclick="exportToExcel()"> 
+                <button class="btn-export" id="exportExcelBtn">
                     📊 ייצא ל-CSV
                 </button>
-                <button class="btn-export" onclick="exportToJSON()">
+                <button class="btn-export" id="exportJsonBtn">
                     💾 שמור כ-JSON
                 </button>
-                <button class="btn-import" onclick="document.getElementById('importFileInput').click()">
+                <button class="btn-import" id="importJsonBtn">
                     📂 טען מקובץ JSON
                 </button>
-                <input type="file" id="importFileInput" style="display: none;" accept=".json" onchange="importFromJSON(event)">
-                <button class="btn-export btn-ics" onclick="exportSelectedOrAllToICS()">
-                    📩 ייצא בחירה/הכל ל-Outlook (ics)
+                <input type="file" id="importFileInput" style="display: none;" accept=".json">
+                <button class="btn-export btn-ics" id="exportIcsBtn">
+                    📅 ייצא בחירה/הכל ל-Outlook (ics)
                 </button>
             </div>
 
@@ -609,31 +604,23 @@
                 <h4>סנן תצוגה:</h4>
                 <div>
                     <label for="filterResponsible">לפי אחראי:</label>
-                    <select id="filterResponsible" onchange="applyFilters()">
-                        <option value="all">הכל</option>
-                    </select>
+                    <select id="filterResponsible"></select>
                 </div>
                 <div>
                     <label for="filterSection">לפי סעיף/נושא:</label>
-                    <select id="filterSection" onchange="applyFilters()">
-                        <option value="all">הכל</option>
-                    </select>
+                    <select id="filterSection"></select>
                 </div>
                 <div>
                     <label for="filterTimeline">לפי לוח זמנים:</label>
-                    <select id="filterTimeline" onchange="applyFilters()">
-                        <option value="all">הכל</option>
-                    </select>
+                    <select id="filterTimeline"></select>
                 </div>
                 <div>
                     <label for="filterProtocolDate">לפי תאריך פרוטוקול:</label>
-                    <select id="filterProtocolDate" onchange="applyFilters()">
-                        <option value="all">הכל</option>
-                    </select>
+                    <select id="filterProtocolDate"></select>
                 </div>
                 <div>
                     <label for="filterPriority">לפי תעדוף:</label>
-                    <select id="filterPriority" onchange="applyFilters()">
+                    <select id="filterPriority">
                         <option value="all">הכל</option>
                         <option value="3">גבוה</option>
                         <option value="2">בינוני</option>
@@ -641,7 +628,7 @@
                         <option value="0">ללא</option>
                     </select>
                 </div>
-                <button onclick="clearFilters()" class="clear">נקה סינונים</button>
+                <button id="clearFiltersBtn" class="clear">נקה סינונים</button>
             </div>
             
             <div class="file-info" id="fileInfo"></div>
@@ -1196,9 +1183,18 @@
             currentFilters.protocolDate = document.getElementById('filterProtocolDate').value;
             currentFilters.priority = document.getElementById('filterPriority').value;
             displayResults(getFilteredTasks());
-            updateStatistics(); 
+            updateStatistics();
         }
         
+        function clearFilters() {
+            document.getElementById('filterResponsible').value = 'all';
+            document.getElementById('filterSection').value = 'all';
+            document.getElementById('filterTimeline').value = 'all';
+            document.getElementById('filterProtocolDate').value = 'all';
+            document.getElementById('filterPriority').value = 'all';
+            applyFilters();
+        }
+
         function confirmClearAllData() {
             if (confirm("האם אתה בטוח שברצונך לנקות את כל המשימות והנתונים? פעולה זו אינה הפיכה.")) {
                 clearAllData();
@@ -1223,15 +1219,13 @@
             const selectAllManagement = document.getElementById('selectAllManagementCheckbox');
             if (selectAllManagement) selectAllManagement.checked = false;
 
-
             document.getElementById('filterResponsible').innerHTML = '<option value="all">הכל</option>';
             document.getElementById('filterSection').innerHTML = '<option value="all">הכל</option>';
             document.getElementById('filterTimeline').innerHTML = '<option value="all">הכל</option>';
             document.getElementById('filterProtocolDate').innerHTML = '<option value="all">הכל</option>';
             document.getElementById('filterPriority').value = 'all';
 
-
-            updateStatistics(); 
+            updateStatistics();
 
             document.getElementById('fileInfo').innerHTML = '';
             document.getElementById('uploadSection').style.display = 'block';
@@ -1251,7 +1245,6 @@
 
             console.log("All data cleared including localStorage");
         }
-
 
         function deleteTask(globalId) {
             const taskIndex = allExtractedTasks.findIndex(task => task.globalId === globalId);
@@ -1487,7 +1480,7 @@
             } else {
                 divManagementTasks.style.display = 'none';
             }
-            
+
             updateSelectAllCheckboxesState(); 
             resultsSection.style.display = 'block';
             filtersSection.style.display = allExtractedTasks.length > 0 ? 'flex' : 'none';
@@ -1632,6 +1625,7 @@
                 if (tasksToExport.length === 0) {
                     showError("אין משימות לייצוא (לא נבחרו משימות ולא מוצגות משימות מסוננות).");
                     showDebug("No tasks to export for ICS (neither selected nor filtered).");
+
                     return;
                 }
                 showDebug(`No tasks selected, exporting ${tasksToExport.length} currently displayed/filtered tasks to ICS.`);
@@ -2077,11 +2071,30 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            loadTasksFromLocalStorage(); 
+            loadTasksFromLocalStorage();
             hideMessages();
             document.getElementById('debugSection').style.display = 'none';
             document.getElementById('debugContent').textContent = '';
-            updateStatistics(); 
+            updateStatistics();
+
+            document.getElementById('copyClipboardBtn').addEventListener('click', copyToClipboard);
+            document.getElementById('switchToUploadBtn').addEventListener('click', switchToUploadView);
+            document.getElementById('clearAllBtn').addEventListener('click', confirmClearAllData);
+
+            document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
+            document.getElementById('exportJsonBtn').addEventListener('click', exportToJSON);
+            document.getElementById('importJsonBtn').addEventListener('click', () => {
+                document.getElementById('importFileInput').click();
+            });
+            document.getElementById('importFileInput').addEventListener('change', importFromJSON);
+            document.getElementById('exportIcsBtn').addEventListener('click', exportSelectedOrAllToICS);
+
+            document.getElementById('filterResponsible').addEventListener('change', applyFilters);
+            document.getElementById('filterSection').addEventListener('change', applyFilters);
+            document.getElementById('filterTimeline').addEventListener('change', applyFilters);
+            document.getElementById('filterProtocolDate').addEventListener('change', applyFilters);
+            document.getElementById('filterPriority').addEventListener('change', applyFilters);
+            document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
         });
     </script>
 </body>

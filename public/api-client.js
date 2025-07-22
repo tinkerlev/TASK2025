@@ -1,26 +1,40 @@
 // api-client.js - הוסף את זה לקובץ ה-HTML שלך
 
+// אבטחה: API Client מאובטח עם טיפול בשגיאות מתקדם
+
 class TaskAPI {
     constructor() {
-        this.baseURL = 'http://localhost:3000/api'; // שנה לכתובת השרת שלך
+        // אבטחה: בדיקת סביבה לקביעת URL בסיס
+        this.baseURL = window.location.origin + '/api';
         this.token = localStorage.getItem('authToken');
+        this.refreshTokenPromise = null;
     }
 
-    // Set authentication token
+    // אבטחה: הגדרת טוקן עם ולידציה
     setToken(token) {
+        if (!token || typeof token !== 'string') {
+            throw new Error('טוקן לא תקין');
+        }
         this.token = token;
         localStorage.setItem('authToken', token);
     }
 
-    // Clear authentication
+    // אבטחה: ניקוי מאובטח של נתוני אימות
     clearAuth() {
         this.token = null;
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
+        // אבטחה: ניקוי נתונים רגישים נוספים
+        sessionStorage.clear();
     }
 
-    // Make authenticated request
+    // אבטחה: בקשה מאובטחת עם טיפול בשגיאות מתקדם
     async request(endpoint, options = {}) {
+        // אבטחה: ולידציה של endpoint
+        if (!endpoint || typeof endpoint !== 'string') {
+            throw new Error('endpoint לא תקין');
+        }
+
         const url = `${this.baseURL}${endpoint}`;
         const config = {
             ...options,
@@ -30,22 +44,49 @@ class TaskAPI {
             }
         };
 
+        // אבטחה: הוספת טוקן רק אם קיים
         if (this.token) {
             config.headers['Authorization'] = `Bearer ${this.token}`;
         }
 
-        const response = await fetch(url, config);
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'שגיאה בתקשורת עם השרת');
-        }
+        try {
+            const response = await fetch(url, config);
+            
+            // אבטחה: טיפול במצבי שגיאה שונים
+            if (response.status === 401) {
+                this.clearAuth();
+                window.location.href = '/login.html';
+                throw new Error('אנא התחבר שוב למערכת');
+            }
 
-        return response.json();
+            if (response.status === 423) {
+                throw new Error('החשבון נעול זמנית');
+            }
+
+            if (response.status === 429) {
+                throw new Error('יותר מדי בקשות. אנא המתן מעט');
+            }
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `שגיאת שרת: ${response.status}`);
+            }
+
+            return response.json();
+        } catch (error) {
+            console.error('API Request Error:', error);
+            throw error;
+        }
     }
 
-    // User registration
+    // אבטחה: ולידציה של נתוני הרשמה
     async register(username, email, password) {
+        // אבטחה: ולידציה בצד הלקוח
+        const validationErrors = this.validateRegistrationData(username, email, password);
+        if (validationErrors.length > 0) {
+            throw new Error(validationErrors.join(', '));
+        }
+
         const data = await this.request('/register', {
             method: 'POST',
             body: JSON.stringify({ username, email, password })
@@ -56,11 +97,17 @@ class TaskAPI {
         return data;
     }
 
-    // User login
+    // אבטחה: ולידציה של נתוני התחברות
     async login(username, password) {
+        if (!username || !password) {
+            throw new Error('שם משתמש וסיסמה נדרשים');
+        }
+
+        // אבטחה: ניקוי קלט
+        const cleanUsername = username.trim();
         const data = await this.request('/login', {
             method: 'POST',
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ username: cleanUsername, password })
         });
         
         this.setToken(data.token);
@@ -68,60 +115,118 @@ class TaskAPI {
         return data;
     }
 
-    // Logout
+    // אבטחה: התנתקות מאובטחת
     logout() {
         this.clearAuth();
-        window.location.href = '/login.html'; // או לדף ההתחברות שלך
+        window.location.href = '/login.html';
     }
 
-    // Get all tasks
+    // אבטחה: פונקציית ולידציה פנימית
+    validateRegistrationData(username, email, password) {
+        const errors = [];
+        
+        if (!username || username.length < 3 || username.length > 30) {
+            errors.push('שם משתמש חייב להיות בין 3-30 תווים');
+        }
+        
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+            errors.push('שם משתמש יכול להכיל רק אותיות, מספרים וקו תחתון');
+        }
+        
+        if (!email || !this.isValidEmail(email)) {
+            errors.push('כתובת אימייל לא תקינה');
+        }
+        
+        if (!password || password.length < 6) {
+            errors.push('סיסמה חייבת להכיל לפחות 6 תווים');
+        }
+        
+        return errors;
+    }
+
+    // אבטחה: ולידציה של אימייל
+    isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    // Existing API methods with security improvements...
     async getTasks() {
         return this.request('/tasks');
     }
 
-    // Create task
     async createTask(task) {
+        // אבטחה: ולידציה של נתוני משימה
+        if (!task.taskDescription || task.taskDescription.trim() === '') {
+            throw new Error('תיאור משימה נדרש');
+        }
+        
         return this.request('/tasks', {
             method: 'POST',
             body: JSON.stringify(task)
         });
     }
 
-    // Create multiple tasks
     async createTasks(tasks) {
+        if (!Array.isArray(tasks) || tasks.length === 0) {
+            throw new Error('נדרש מערך משימות');
+        }
+        
+        if (tasks.length > 100) {
+            throw new Error('לא ניתן ליצור יותר מ-100 משימות בבת אחת');
+        }
+        
         return this.request('/tasks/bulk', {
             method: 'POST',
             body: JSON.stringify({ tasks })
         });
     }
 
-    // Update task
     async updateTask(id, updates) {
+        if (!id) {
+            throw new Error('מזהה משימה נדרש');
+        }
+        
         return this.request(`/tasks/${id}`, {
             method: 'PUT',
             body: JSON.stringify(updates)
         });
     }
 
-    // Delete task
     async deleteTask(id) {
+        if (!id) {
+            throw new Error('מזהה משימה נדרש');
+        }
+        
         return this.request(`/tasks/${id}`, {
             method: 'DELETE'
         });
     }
 
-    // Get statistics
     async getStats() {
         return this.request('/stats');
     }
 
-    // Search tasks
-    async searchTasks(query) {
-        return this.request(`/tasks/search?q=${encodeURIComponent(query)}`);
-    }
-
-    // Upload file
+    // אבטחה: העלאת קובץ מאובטחת
     async uploadFile(file) {
+        // אבטחה: ולידציה של קובץ
+        if (!file) {
+            throw new Error('קובץ נדרש');
+        }
+        
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+            throw new Error('גודל הקובץ גדול מדי (מקסימום 10MB)');
+        }
+        
+        const allowedTypes = [
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ];
+        
+        if (!allowedTypes.includes(file.type)) {
+            throw new Error('רק קבצי .docx מותרים');
+        }
+        
         const formData = new FormData();
         formData.append('file', file);
 
@@ -134,7 +239,7 @@ class TaskAPI {
         });
 
         if (!response.ok) {
-            const error = await response.json();
+            const error = await response.json().catch(() => ({}));
             throw new Error(error.error || 'שגיאה בהעלאת הקובץ');
         }
 
@@ -142,8 +247,22 @@ class TaskAPI {
     }
 }
 
-// Initialize API client
+// אבטחה: יצירת instance מאובטח
 const api = new TaskAPI();
+
+// אבטחה: בדיקת אימות בטעינת הדף
+document.addEventListener('DOMContentLoaded', () => {
+    const token = localStorage.getItem('authToken');
+    const user = localStorage.getItem('user');
+    
+    // אבטחה: בדיקה אם המשתמש מחובר
+    if (!token || !user) {
+        // נמצאים בדף שדורש אימות אבל אין טוקן
+        if (window.location.pathname !== '/login.html' && window.location.pathname !== '/') {
+            window.location.href = '/login.html';
+        }
+    }
+});
 
 // Update existing functions to use the API
 
