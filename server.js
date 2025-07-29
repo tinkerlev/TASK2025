@@ -12,7 +12,7 @@ const validator = require('validator');
 const fs = require('fs');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 // אבטחה: הגדרת Helmet להגנה מפני תקיפות נפוצות
 app.use(helmet({
@@ -30,7 +30,7 @@ app.use(helmet({
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
     ? ['https://yourdomain.com'] // שנה לדומיין שלך בפרודקשן
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    : ['http://localhost:10000', 'http://127.0.0.1:10000'],
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -387,7 +387,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ 
   storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // הגבלה ל-10MB
+    fileSize: 200000 * 1024 * 1024, // הגבלה ל-200GB
     files: 1 // קובץ אחד בלבד
   },
   fileFilter: (req, file, cb) => {

@@ -1,7 +1,5 @@
 // api-client.js - הוסף את זה לקובץ ה-HTML שלך
-
 // אבטחה: API Client מאובטח עם טיפול בשגיאות מתקדם
-
 class TaskAPI {
     constructor() {
         // אבטחה: בדיקת סביבה לקביעת URL בסיס
