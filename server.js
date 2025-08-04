@@ -345,11 +345,7 @@ app.post('/api/tasks/bulk', authMiddleware, async (req, res) => {
 // Update task
 app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
   try {
-    // אבטחה: ולידציה של ID
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({ error: 'מזהה משימה לא תקין' });
-    }
-    
+    // הסרת בדיקת MongoDB ObjectId - משתמשים ב-ID פשוט
     const tasks = readJson(TASKS_FILE);
     const idx = tasks.findIndex(t => t.id === req.params.id && t.userId === req.user.id);
     if (idx === -1) return res.status(404).json({ error: 'משימה לא נמצאה' });
@@ -365,11 +361,7 @@ app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
 // Delete task
 app.delete('/api/tasks/:id', authMiddleware, async (req, res) => {
   try {
-    // אבטחה: ולידציה של ID
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({ error: 'מזהה משימה לא תקין' });
-    }
-    
+    // הסרת בדיקת MongoDB ObjectId - משתמשים ב-ID פשוט
     let tasks = readJson(TASKS_FILE);
     const initialLength = tasks.length;
     tasks = tasks.filter(t => !(t.id === req.params.id && t.userId === req.user.id));
@@ -467,3 +459,45 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Visit http://localhost:${PORT} to access the application`);
 });
+
+// הוספת פונקציית validateInput אחרי ה-middleware
+function validateInput(data, rules) {
+  const errors = [];
+  
+  for (const [field, rule] of Object.entries(rules)) {
+    const value = data[field];
+    
+    // בדיקת שדה נדרש
+    if (rule.required && !value) {
+      errors.push(`${field} הוא שדה חובה`);
+      continue;
+    }
+    
+    // בדיקת סוג
+    if (value && rule.type && typeof value !== rule.type) {
+      errors.push(`${field} חייב להיות מסוג ${rule.type}`);
+    }
+    
+    // בדיקת אורך מינימלי
+    if (value && rule.minLength && value.length < rule.minLength) {
+      errors.push(`${field} חייב להכיל לפחות ${rule.minLength} תווים`);
+    }
+    
+    // בדיקת אורך מקסימלי
+    if (value && rule.maxLength && value.length > rule.maxLength) {
+      errors.push(`${field} לא יכול להכיל יותר מ-${rule.maxLength} תווים`);
+    }
+    
+    // בדיקת pattern
+    if (value && rule.pattern && !rule.pattern.test(value)) {
+      errors.push(`${field} אינו בפורמט תקין`);
+    }
+    
+    // בדיקת אימייל
+    if (value && rule.isEmail && !validator.isEmail(value)) {
+      errors.push(`${field} חייב להיות כתובת אימייל תקינה`);
+    }
+  }
+  
+  return errors;
+}

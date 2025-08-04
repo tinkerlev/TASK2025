@@ -6,6 +6,41 @@ class TaskAPI {
         this.baseURL = window.location.origin + '/api';
         this.token = localStorage.getItem('authToken');
         this.refreshTokenPromise = null;
+        this.localDB = null;
+        this.offlineMode = !navigator.onLine;
+        this.initLocalDB();
+        this.setupOfflineHandlers();
+    }
+
+    // אתחול LocalDB
+    async initLocalDB() {
+        if (window.localDB) {
+            this.localDB = window.localDB;
+        }
+    }
+
+    // הגדרת טיפול במצב offline
+    setupOfflineHandlers() {
+        window.addEventListener('online', () => {
+            this.offlineMode = false;
+            this.showNotification('חזרת למצב מקוון - מסנכרן נתונים...', 'success');
+        });
+
+        window.addEventListener('offline', () => {
+            this.offlineMode = true;
+            this.showNotification('אתה במצב לא מקוון - השינויים יישמרו מקומית', 'warning');
+        });
+    }
+
+    // הצגת התראה
+    showNotification(message, type = 'info') {
+        if (window.showSuccess && type === 'success') {
+            window.showSuccess(message);
+        } else if (window.showError && type === 'error') {
+            window.showError(message);
+        } else {
+            console.log(`[${type}] ${message}`);
+        }
     }
 
     // אבטחה: הגדרת טוקן עם ולידציה
@@ -28,9 +63,9 @@ class TaskAPI {
 
     // אבטחה: בקשה מאובטחת עם טיפול בשגיאות מתקדם
     async request(endpoint, options = {}) {
-        // אבטחה: ולידציה של endpoint
-        if (!endpoint || typeof endpoint !== 'string') {
-            throw new Error('endpoint לא תקין');
+        // בדיקה אם במצב offline
+        if (this.offlineMode) {
+            return this.handleOfflineRequest(endpoint, options);
         }
 
         const url = `${this.baseURL}${endpoint}`;
@@ -72,9 +107,57 @@ class TaskAPI {
 
             return response.json();
         } catch (error) {
-            console.error('API Request Error:', error);
+            // אם הבקשה נכשלה בגלל חיבור, עבור למצב offline
+            if (error.message.includes('Failed to fetch') || !navigator.onLine) {
+                this.offlineMode = true;
+                return this.handleOfflineRequest(endpoint, options);
+            }
             throw error;
         }
+    }
+
+    // טיפול בבקשות במצב offline
+    async handleOfflineRequest(endpoint, options) {
+        if (!this.localDB) {
+            throw new Error('מצב לא מקוון לא זמין');
+        }
+
+        const method = options.method || 'GET';
+        const body = options.body ? JSON.parse(options.body) : {};
+
+        switch (endpoint) {
+            case '/tasks':
+                if (method === 'GET') {
+                    return await this.localDB.getAllTasks();
+                } else if (method === 'POST') {
+                    const task = await this.localDB.addTask(body);
+                    return task;
+                }
+                break;
+                
+            case endpoint.match(/^\/tasks\/(.+)$/)?.input:
+                const taskId = endpoint.split('/')[2];
+                if (method === 'PUT') {
+                    return await this.localDB.updateTask(taskId, body);
+                } else if (method === 'DELETE') {
+                    await this.localDB.deleteTask(taskId);
+                    return { message: 'משימה נמחקה מקומית' };
+                }
+                break;
+                
+            case '/tasks/bulk':
+                if (method === 'POST') {
+                    const tasks = [];
+                    for (const task of body.tasks) {
+                        const newTask = await this.localDB.addTask(task);
+                        tasks.push(newTask);
+                    }
+                    return tasks;
+                }
+                break;
+        }
+
+        throw new Error('פעולה לא נתמכת במצב לא מקוון');
     }
 
     // אבטחה: ולידציה של נתוני הרשמה
@@ -150,7 +233,26 @@ class TaskAPI {
 
     // Existing API methods with security improvements...
     async getTasks() {
-        return this.request('/tasks');
+        try {
+            const tasks = await this.request('/tasks');
+            
+            // שמירה מקומית של המשימות
+            if (this.localDB && !this.offlineMode) {
+                await this.localDB.updateLocalTasks(tasks);
+            }
+            
+            return tasks;
+        } catch (error) {
+            // אם יש שגיאה, נסה לקבל מהמסד המקומי
+            if (this.localDB) {
+                const localTasks = await this.localDB.getAllTasks();
+                if (localTasks.length > 0) {
+                    this.showNotification('הנתונים נטענו ממטמון מקומי', 'info');
+                    return localTasks;
+                }
+            }
+            throw error;
+        }
     }
 
     async createTask(task) {
@@ -355,6 +457,10 @@ async function togglePriority(globalId) {
 // Load tasks on page load
 async function loadTasks() {
     try {
+        // בדיקת הגדרות משתמש
+        const settings = SimpleStorage.getUserSettings();
+        
+        // טעינת משימות
         const tasks = await api.getTasks();
         allExtractedTasks = tasks;
         
@@ -366,6 +472,13 @@ async function loadTasks() {
             
             document.getElementById('resultsSection').style.display = 'block';
             document.getElementById('uploadSection').style.display = 'none';
+            
+            // עדכון מצב אפליקציה
+            SimpleStorage.saveAppState({
+                lastSync: new Date().toISOString(),
+                offlineChanges: 0,
+                currentFilter: 'all'
+            });
         }
     } catch (error) {
         if (error.message.includes('התחבר')) {

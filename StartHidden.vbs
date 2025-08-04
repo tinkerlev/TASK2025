@@ -1,0 +1,1 @@
+CreateObject("WScript.Shell").Run "cmd /c cd /d " & Chr(34) & CreateObject("Scripting.FileSystemObject").GetParentFolderName(WScript.ScriptFullName) & Chr(34) & " && start /b node server.js && timeout /t 3 && start http://localhost:10000", 0, False
