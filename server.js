@@ -1,503 +1,458 @@
+// Task Manager 2025 - Simple Local Server
 require('dotenv').config();
+const { exec } = require('child_process');
 const express = require('express');
-const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const rateLimit = require('express-rate-limit');
+const path = require('path');
+const fs = require('fs');
 const multer = require('multer');
 const mammoth = require('mammoth');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const path = require('path');
-const rateLimit = require('express-rate-limit');
-const helmet = require('helmet');
 const validator = require('validator');
-const fs = require('fs');
-
+const pdf = require('pdf-parse');
 const app = express();
 const PORT = process.env.PORT || 10000;
-
-// אבטחה: הגדרת Helmet להגנה מפני תקיפות נפוצות
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https:"],
-    },
-  },
-}));
-
-// אבטחה: הגדרת CORS מוגבלת לדומיינים ספציפיים
-const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://yourdomain.com'] // שנה לדומיין שלך בפרודקשן
-    : ['http://localhost:10000', 'http://127.0.0.1:10000'],
-  credentials: true,
-  optionsSuccessStatus: 200,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-};
-
-app.use(cors(corsOptions));
-
-// אבטחה: הגבלת גודל הבקשות למניעת DOS attacks
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-app.use(express.static('public'));
-
-// אבטחה: Rate limiting למניעת brute force attacks
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 דקות
-  max: 5, // מקסימום 5 ניסיונות התחברות ב-15 דקות
-  message: {
-    error: 'יותר מדי ניסיונות התחברות. נסה שוב בעוד 15 דקות'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 דקות
-  max: 100, // 100 בקשות ב-15 דקות
-  message: {
-    error: 'יותר מדי בקשות. נסה שוב מאוחר יותר'
-  }
-});
-
-app.use('/api/login', authLimiter);
-app.use('/api/register', authLimiter);
-app.use('/api', generalLimiter);
-
-// אבטחה: ולידציה של משתני סביבה
-// const requiredEnvVars = ['JWT_SECRET', 'MONGODB_URI'];
-// const missingEnvVars = requiredEnvVars.filter(env => !process.env[env]);
-
-// if (missingEnvVars.length > 0) {
-//   console.error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
-//   process.exit(1);
-// }
-
-// אבטחה: שימוש במחרוזת חזקה ל-JWT מתוך משתנה סביבה
-const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRY = process.env.JWT_EXPIRY || '24h';
-
-// הגדר נתיבים לקבצים
 const USERS_FILE = path.join(__dirname, 'users.json');
 const TASKS_FILE = path.join(__dirname, 'tasks.json');
 
-// פונקציות עזר לקריאה וכתיבה
-function readJson(file) {
-  try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch {
-    return [];
-  }
-}
-function writeJson(file, data) {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2));
+function readJson(file, fallback) {
+    try {
+        if (!fs.existsSync(file)) return fallback;
+        return JSON.parse(fs.readFileSync(file, 'utf8'));
+    } catch {
+        return fallback;
+    }
 }
 
-// אבטחה: Authentication middleware משופר
-const authMiddleware = async (req, res, next) => {
-  try {
-    const authHeader = req.header('Authorization');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'אנא התחבר למערכת' });
+function writeJson(file, data) {
+    fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+}
+
+// Security: Rate limiting
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: 'יותר מדי בקשות מכתובת IP זו, אנא נסה שוב מאוחר יותר.',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// הגדרות בסיסיות
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(limiter);
+app.disable('x-powered-by');
+
+// Security: File upload configuration
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadDir = path.join(__dirname, 'uploads');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
+        }
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1E9)}-${sanitizedName}`;
+        cb(null, uniqueName);
     }
-    
-    const token = authHeader.replace('Bearer ', '');
-    
-    if (!token) {
-      return res.status(401).json({ error: 'אנא התחבר למערכת' });
+});
+
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB
+        files: 5
+    },
+    fileFilter: (req, file, cb) => {
+        const allowedMimes = [
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/pdf'
+        ];
+        if (allowedMimes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('רק קבצי .docx או .pdf מותרים'), false);
+        }
     }
-    
-    // אבטחה: ולידציה של טוקן JWT
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const users = readJson(USERS_FILE);
-    const user = users.find(u => u.id === decoded.userId);
-    
-    if (!user || !user.isActive) {
-      return res.status(401).json({ error: 'משתמש לא קיים או לא פעיל' });
-    }
-    
-    req.user = user;
-    req.token = token;
+});
+
+// User model helpers
+function getUsers() {
+    return readJson(USERS_FILE, []);
+}
+
+function saveUsers(users) {
+    writeJson(USERS_FILE, users);
+}
+
+function getTasks() {
+    return readJson(TASKS_FILE, []);
+}
+
+function saveTasks(tasks) {
+    writeJson(TASKS_FILE, tasks);
+}
+
+function generateId() {
+    return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+}
+
+// Authentication middleware
+const authenticateToken = (req, res, next) => {
+    req.user = { id: 'default-user', username: 'user', role: 'user' };
     next();
-  } catch (error) {
-    // אבטחה: לא חושפים פרטי שגיאה פנימיים
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ error: 'טוקן לא תקין' });
-    } else if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'טוקן פג תוקף, אנא התחבר שוב' });
-    }
-    
-    console.error('Auth middleware error:', error);
-    res.status(401).json({ error: 'שגיאה באימות' });
-  }
 };
 
-// אבטחה: מחיקת קוד HTML מיותר מהשרת - עכשיו נשתמש רק ב-static files
-app.get('/', (req, res) => {
-  res.redirect('/index.html');
-});
-
-// User registration עם אבטחה מחוזקת
+// Registration endpoint
 app.post('/api/register', async (req, res) => {
-  try {
-    const { username, email, password } = req.body;
-    
-    // אבטחה: ולידציה קפדנית של קלט
-    const validationRules = {
-      username: { 
-        required: true, 
-        type: 'string', 
-        minLength: 3, 
-        maxLength: 30,
-        pattern: /^[a-zA-Z0-9_]+$/
-      },
-      email: { 
-        required: true, 
-        type: 'string', 
-        maxLength: 100,
-        isEmail: true
-      },
-      password: { 
-        required: true, 
-        type: 'string', 
-        minLength: 6, 
-        maxLength: 128
-      }
-    };
-    
-    const validationErrors = validateInput(req.body, validationRules);
-    if (validationErrors.length > 0) {
-      return res.status(400).json({ error: validationErrors.join(', ') });
+    try {
+        const { username, email, password } = req.body;
+
+        if (!username || !email || !password) {
+            return res.status(400).json({ error: 'כל השדות נדרשים' });
+        }
+
+        if (username.length < 3 || username.length > 30) {
+            return res.status(400).json({ error: 'שם משתמש חייב להיות בין 3-30 תווים' });
+        }
+
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+            return res.status(400).json({ error: 'שם משתמש יכול להכיל רק אותיות, מספרים וקו תחתון' });
+        }
+
+        if (!validator.isEmail(email)) {
+            return res.status(400).json({ error: 'כתובת אימייל לא תקינה' });
+        }
+
+        if (password.length < 6) {
+            return res.status(400).json({ error: 'סיסמה חייבת להכיל לפחות 6 תווים' });
+        }
+
+        let users = getUsers();
+        if (users.find(u => u.username === username || u.email === email)) {
+            return res.status(400).json({ error: 'שם משתמש או אימייל כבר קיימים' });
+        }
+
+        const hashed = await bcrypt.hash(password, 12);
+        const user = {
+            id: generateId(),
+            username,
+            email,
+            password: hashed,
+            role: 'user',
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            lastLogin: null,
+            loginAttempts: 0,
+            lockUntil: null
+        };
+        users.push(user);
+        saveUsers(users);
+
+        res.status(201).json({
+            message: 'משתמש נוצר בהצלחה',
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                role: user.role
+            }
+        });
+
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({ error: 'שגיאה פנימית בשרת' });
     }
-    
-    // אבטחה: בדיקת חוזק סיסמה
-    const passwordStrengthRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{6,}$/;
-    if (!passwordStrengthRegex.test(password)) {
-      return res.status(400).json({ 
-        error: 'הסיסמה חייבת להכיל לפחות אות גדולה, אות קטנה ומספר' 
-      });
-    }
-    
-    // אבטחה: ניקוי ואימות קלט
-    const cleanEmail = validator.normalizeEmail(email);
-    const cleanUsername = validator.escape(username.trim());
-    
-    const users = readJson(USERS_FILE);
-    if (users.find(u => u.username === cleanUsername || u.email === cleanEmail)) {
-      return res.status(400).json({ error: 'שם משתמש או אימייל כבר קיימים' });
-    }
-    const hashedPassword = await bcrypt.hash(password, 12);
-    const user = {
-      id: Date.now().toString(),
-      username: cleanUsername,
-      email: cleanEmail,
-      password: hashedPassword,
-      isActive: true,
-      createdAt: new Date()
-    };
-    users.push(user);
-    writeJson(USERS_FILE, users);
-    
-    // אבטחה: יצירת טוקן עם תוקף מוגבל
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
-    
-    // אבטחה: לא החזרת פרטים רגישים
-    res.status(201).json({
-      message: 'משתמש נרשם בהצלחה',
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email
-      }
-    });
-  } catch (error) {
-    console.error('Registration error:', error);
-    
-    // אבטחה: טיפול בשגיאות ללא חשיפת מידע פנימי
-    if (error.code === 11000) {
-      return res.status(400).json({ error: 'שם משתמש או אימייל כבר קיימים' });
-    }
-    
-    res.status(500).json({ error: 'שגיאה בתהליך ההרשמה' });
-  }
 });
 
-// User login עם אבטחה מחוזקת
+// Login endpoint
 app.post('/api/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    
-    // אבטחה: ולידציה בסיסית
-    if (!username || !password) {
-      return res.status(400).json({ error: 'שם משתמש וסיסמה נדרשים' });
+    try {
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ error: 'שם משתמש וסיסמה נדרשים' });
+        }
+
+        let users = getUsers();
+        let user = users.find(u => u.username === username);
+        if (!user) {
+            return res.status(401).json({ error: 'שם משתמש או סיסמה שגויים' });
+        }
+
+        if (user.lockUntil && new Date(user.lockUntil) > new Date()) {
+            return res.status(423).json({ error: 'החשבון נעול זמנית. נסה שוב מאוחר יותר.' });
+        }
+
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+            user.loginAttempts = (user.loginAttempts || 0) + 1;
+            if (user.loginAttempts >= 5) {
+                user.lockUntil = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+            }
+            saveUsers(users);
+            return res.status(401).json({ error: 'שם משתמש או סיסמה שגויים' });
+        }
+
+        user.loginAttempts = 0;
+        user.lockUntil = null;
+        user.lastLogin = new Date().toISOString();
+        saveUsers(users);
+
+        res.json({
+            message: 'התחברות הצליחה',
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                role: user.role
+            }
+        });
+
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'שגיאה פנימית בשרת' });
     }
-    
-    // אבטחה: ניקוי קלט
-    const cleanUsername = validator.escape(username.trim());
-    
-    const users = readJson(USERS_FILE);
-    const user = users.find(u => u.username === cleanUsername || u.email === cleanUsername);
-    if (!user) {
-      return res.status(401).json({ error: 'שם משתמש או סיסמה שגויים' });
-    }
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) {
-      return res.status(401).json({ error: 'שם משתמש או סיסמה שגויים' });
-    }
-    
-    // אבטחה: יצירת טוקן עם תוקף מוגבל
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
-    
-    res.json({
-      message: 'התחברת בהצלחה',
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email
-      }
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'שגיאה בתהליך ההתחברות' });
-  }
 });
 
-// Get all tasks for user
-app.get('/api/tasks', authMiddleware, async (req, res) => {
-  const tasks = readJson(TASKS_FILE).filter(t => t.userId === req.user.id);
-  res.json(tasks);
+// Get all tasks
+app.get('/api/tasks', authenticateToken, (req, res) => {
+    try {
+        const tasks = getTasks().filter(t => t.userId === req.user.id);
+        res.json(tasks);
+    } catch (error) {
+        console.error('Get tasks error:', error);
+        res.status(500).json({ error: 'שגיאה בקבלת המשימות' });
+    }
 });
 
-// Create new task
-app.post('/api/tasks', authMiddleware, async (req, res) => {
-  try {
-    // אבטחה: ולידציה של נתוני המשימה
-    const validationRules = {
-      taskDescription: { required: true, type: 'string', maxLength: 1000 },
-      section: { type: 'string', maxLength: 200 },
-      responsible: { type: 'string', maxLength: 100 },
-      timeline: { type: 'string', maxLength: 100 }
-    };
-    
-    const validationErrors = validateInput(req.body, validationRules);
-    if (validationErrors.length > 0) {
-      return res.status(400).json({ error: validationErrors.join(', ') });
+// Get single task
+app.get('/api/tasks/:id', authenticateToken, (req, res) => {
+    try {
+        const task = getTasks().find(t => t.id === req.params.id && t.userId === req.user.id);
+        if (!task) return res.status(404).json({ error: 'משימה לא נמצאה' });
+        res.json(task);
+    } catch (error) {
+        console.error('Get task error:', error);
+        res.status(500).json({ error: 'שגיאה בקבלת המשימה' });
     }
-    
-    const tasks = readJson(TASKS_FILE);
-    const task = {
-      id: Date.now().toString(),
-      userId: req.user.id,
-      ...req.body,
-      createdDate: new Date()
-    };
-    tasks.push(task);
-    writeJson(TASKS_FILE, tasks);
-    res.status(201).json(task);
-  } catch (error) {
-    console.error('Create task error:', error);
-    res.status(500).json({ error: 'שגיאה ביצירת המשימה' });
-  }
+});
+
+// Create single task
+app.post('/api/tasks', authenticateToken, (req, res) => {
+    try {
+        const { section, taskDescription, responsible, timeline, documentType, protocolDate, priority, isDuplicate, status } = req.body;
+        if (!taskDescription || !section || !responsible) {
+            return res.status(400).json({ error: 'שדות חובה חסרים' });
+        }
+
+        let tasks = getTasks();
+        const task = {
+            id: generateId(),
+            numberFromFile: req.body.numberFromFile || '',
+            section,
+            taskDescription,
+            responsible,
+            timeline: timeline || '',
+            documentType: documentType || '',
+            protocolDate: protocolDate || '',
+            priority: typeof priority === 'number' ? priority : 0,
+            isDuplicate: !!isDuplicate,
+            userId: req.user.id,
+            status: status || 'pending',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        tasks.push(task);
+        saveTasks(tasks);
+        res.status(201).json(task);
+    } catch (error) {
+        console.error('Create task error:', error);
+        res.status(500).json({ error: 'שגיאה ביצירת המשימה' });
+    }
 });
 
 // Create multiple tasks
-app.post('/api/tasks/bulk', authMiddleware, async (req, res) => {
-  try {
-    const { tasks } = req.body;
-    
-    if (!Array.isArray(tasks) || tasks.length === 0) {
-      return res.status(400).json({ error: 'נדרש מערך משימות' });
+app.post('/api/tasks/bulk', authenticateToken, (req, res) => {
+    try {
+        const { tasks } = req.body;
+        if (!Array.isArray(tasks) || tasks.length === 0) {
+            return res.status(400).json({ error: 'נדרש מערך משימות' });
+        }
+        if (tasks.length > 100) {
+            return res.status(400).json({ error: 'לא ניתן ליצור יותר מ-100 משימות בבת אחת' });
+        }
+
+        let allTasks = getTasks();
+        const now = new Date().toISOString();
+        const tasksWithUser = tasks.map(task => ({
+            ...task,
+            id: generateId(),
+            userId: req.user.id,
+            createdAt: now,
+            updatedAt: now
+        }));
+        allTasks.push(...tasksWithUser);
+        saveTasks(allTasks);
+        res.status(201).json(tasksWithUser);
+    } catch (error) {
+        console.error('Bulk create tasks error:', error);
+        res.status(500).json({ error: 'שגיאה ביצירת המשימות' });
     }
-    
-    // אבטחה: הגבלת מספר משימות בבת אחת
-    if (tasks.length > 100) {
-      return res.status(400).json({ error: 'לא ניתן ליצור יותר מ-100 משימות בבת אחת' });
-    }
-    
-    const validatedTasks = tasks.map(task => ({
-      ...task,
-      userId: req.user.id
-    }));
-    
-    const existingTasks = readJson(TASKS_FILE);
-    const newTasks = validatedTasks.filter(nt => !existingTasks.find(et => et.id === nt.id));
-    
-    if (newTasks.length !== validatedTasks.length) {
-      return res.status(400).json({ error: 'ישנם מזהי משימה כפולים' });
-    }
-    
-    const allTasks = [...existingTasks, ...newTasks];
-    writeJson(TASKS_FILE, allTasks);
-    res.status(201).json(newTasks);
-  } catch (error) {
-    console.error('Bulk create tasks error:', error);
-    res.status(500).json({ error: 'שגיאה ביצירת המשימות' });
-  }
 });
 
 // Update task
-app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
-  try {
-    // הסרת בדיקת MongoDB ObjectId - משתמשים ב-ID פשוט
-    const tasks = readJson(TASKS_FILE);
-    const idx = tasks.findIndex(t => t.id === req.params.id && t.userId === req.user.id);
-    if (idx === -1) return res.status(404).json({ error: 'משימה לא נמצאה' });
-    tasks[idx] = { ...tasks[idx], ...req.body };
-    writeJson(TASKS_FILE, tasks);
-    res.json(tasks[idx]);
-  } catch (error) {
-    console.error('Update task error:', error);
-    res.status(500).json({ error: 'שגיאה בעדכון המשימה' });
-  }
+app.put('/api/tasks/:id', authenticateToken, (req, res) => {
+    try {
+        let tasks = getTasks();
+        let task = tasks.find(t => t.id === req.params.id && t.userId === req.user.id);
+        if (!task) {
+            return res.status(404).json({ error: 'משימה לא נמצאה' });
+        }
+
+        Object.assign(task, req.body, { updatedAt: new Date().toISOString() });
+        saveTasks(tasks);
+        res.json(task);
+    } catch (error) {
+        console.error('Update task error:', error);
+        res.status(500).json({ error: 'שגיאה בעדכון המשימה' });
+    }
 });
 
 // Delete task
-app.delete('/api/tasks/:id', authMiddleware, async (req, res) => {
-  try {
-    // הסרת בדיקת MongoDB ObjectId - משתמשים ב-ID פשוט
-    let tasks = readJson(TASKS_FILE);
-    const initialLength = tasks.length;
-    tasks = tasks.filter(t => !(t.id === req.params.id && t.userId === req.user.id));
-    if (tasks.length === initialLength) return res.status(404).json({ error: 'משימה לא נמצאה' });
-    writeJson(TASKS_FILE, tasks);
-    res.json({ message: 'משימה נמחקה בהצלחה' });
-  } catch (error) {
-    console.error('Delete task error:', error);
-    res.status(500).json({ error: 'שגיאה במחיקת המשימה' });
-  }
+app.delete('/api/tasks/:id', authenticateToken, (req, res) => {
+    try {
+        let tasks = getTasks();
+        const idx = tasks.findIndex(t => t.id === req.params.id && t.userId === req.user.id);
+        if (idx === -1) {
+            return res.status(404).json({ error: 'משימה לא נמצאה' });
+        }
+        tasks.splice(idx, 1);
+        saveTasks(tasks);
+        res.json({ message: 'משימה נמחקה בהצלחה' });
+    } catch (error) {
+        console.error('Delete task error:', error);
+        res.status(500).json({ error: 'שגיאה במחיקת המשימה' });
+    }
 });
 
-// Upload and process file עם אבטחה מחוזקת
-const storage = multer.memoryStorage();
-const upload = multer({ 
-  storage,
-  limits: {
-    fileSize: 200000 * 1024 * 1024, // הגבלה ל-200GB
-    files: 1 // קובץ אחד בלבד
-  },
-  fileFilter: (req, file, cb) => {
-    // אבטחה: בדיקת סוג קובץ
-    const allowedMimeTypes = [
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ];
-    
-    if (allowedMimeTypes.includes(file.mimetype)) {
-      cb(null, true);
+// File upload endpoint
+app.post('/api/upload', authenticateToken, upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'לא נבחר קובץ' });
+        }
+        
+        const filePath = req.file.path;
+        let result = { value: '', messages: [] };
+        
+        if (req.file.mimetype === 'application/pdf') {
+            const dataBuffer = fs.readFileSync(filePath);
+            const data = await pdf(dataBuffer);
+            result.value = `<pre>${data.text.replace(/</g, "&lt;")}</pre>`;
+        } else {
+            result = await mammoth.convertToHtml({ path: filePath });
+        }
+        
+        fs.unlinkSync(filePath);
+
+        res.json({
+            html: result.value,
+            filename: req.file.originalname,
+            warnings: result.messages || []
+        });
+
+    } catch (error) {
+        if (req.file) {
+            fs.unlink(req.file.path, (err) => {
+                if (err) console.error('Error deleting file on error:', err);
+            });
+        }
+        console.error('File upload error:', error);
+        res.status(500).json({ error: 'שגיאה בעיבוד הקובץ' });
+    }
+});
+
+// Get user statistics
+app.get('/api/stats', authenticateToken, (req, res) => {
+    try {
+        const tasks = getTasks().filter(t => t.userId === req.user.id);
+        const statusBreakdown = tasks.reduce((acc, t) => {
+            acc[t.status] = (acc[t.status] || 0) + 1;
+            return acc;
+        }, {});
+        
+        res.json({
+            totalTasks: tasks.length,
+            statusBreakdown,
+            user: {
+                username: req.user.username,
+                memberSince: req.user.createdAt
+            }
+        });
+    } catch (error) {
+        console.error('Stats error:', error);
+        res.status(500).json({ error: 'שגיאה בקבלת הסטטיסטיקות' });
+    }
+});
+
+// Serve static files
+app.use(express.static('public'));
+
+// הסר את הנתיב הכללי או החלף אותו
+// app.get('*', (req, res) => {
+//     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// });
+
+// לחלופין, השתמש בזה במקום:
+app.get('/', (req, res) => {
+    const indexPath = path.join(__dirname, 'public', 'index.html');
+    if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
     } else {
-      cb(new Error('רק קבצי .docx מותרים'), false);
+        res.json({ 
+            message: 'Task Manager API Server', 
+            version: '2025.1',
+            endpoints: ['/api/tasks', '/api/register', '/api/login', '/api/upload', '/api/stats']
+        });
     }
-  }
 });
 
-app.post('/api/upload', authMiddleware, upload.single('file'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'לא נשלח קובץ' });
+// נתיבי API נוספים יכולים לבוא כאן
+app.get('/health', (req, res) => {
+    res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({ error: 'נתיב לא נמצא' });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'שגיאה פנימית בשרת' });
+});
+
+app.listen(PORT, '127.0.0.1', () => {
+    const url = `http://127.0.0.1:${PORT}`;
+    console.log(`Task Manager server running on ${url}`);
+
+    let command;
+    if (process.platform === 'win32') {
+        command = `start ${url}`;
+    } else if (process.platform === 'darwin') {
+        command = `open ${url}`;
+    } else {
+        command = `xdg-open ${url}`;
     }
 
-    // אבטחה: בדיקת גודל קובץ נוספת
-    if (req.file.size > 10 * 1024 * 1024) {
-      return res.status(400).json({ error: 'הקובץ גדול מדי (מקסימום 10MB)' });
-    }
-
-    const result = await mammoth.convertToHtml({ buffer: req.file.buffer });
-    
-    res.json({
-      html: result.value,
-      filename: req.file.originalname
+    exec(command, (error) => {
+        if (error) {
+            console.error(`Failed to open browser automatically: ${error.message}`);
+            console.log(`Please open your browser and navigate to: ${url}`);
+        }
     });
-  } catch (error) {
-    console.error('Upload error:', error);
-    if (error.message === 'רק קבצי .docx מותרים') {
-      return res.status(400).json({ error: error.message });
-    }
-    res.status(500).json({ error: 'שגיאה בעיבוד הקובץ' });
-  }
 });
-
-// Get task statistics
-app.get('/api/stats', authMiddleware, async (req, res) => {
-  try {
-    const tasks = readJson(TASKS_FILE).filter(t => t.userId === req.user.id);
-    const totalTasks = tasks.length;
-    const completedTasks = tasks.filter(t => t.isCompleted).length;
-    const prioritizedTasks = tasks.filter(t => t.priority > 0).length;
-    const duplicateTasks = tasks.filter(t => t.isDuplicate).length;
-    
-    res.json({
-      totalTasks,
-      completedTasks,
-      prioritizedTasks,
-      duplicateTasks
-    });
-  } catch (error) {
-    console.error('Stats error:', error);
-    res.status(500).json({ error: 'שגיאה בטעינת הסטטיסטיקות' });
-  }
-});
-
-// אבטחה: Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('Shutting down gracefully...');
-  process.exit(0);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
-});
-
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Visit http://localhost:${PORT} to access the application`);
-});
-
-// הוספת פונקציית validateInput אחרי ה-middleware
-function validateInput(data, rules) {
-  const errors = [];
-  
-  for (const [field, rule] of Object.entries(rules)) {
-    const value = data[field];
-    
-    // בדיקת שדה נדרש
-    if (rule.required && !value) {
-      errors.push(`${field} הוא שדה חובה`);
-      continue;
-    }
-    
-    // בדיקת סוג
-    if (value && rule.type && typeof value !== rule.type) {
-      errors.push(`${field} חייב להיות מסוג ${rule.type}`);
-    }
-    
-    // בדיקת אורך מינימלי
-    if (value && rule.minLength && value.length < rule.minLength) {
-      errors.push(`${field} חייב להכיל לפחות ${rule.minLength} תווים`);
-    }
-    
-    // בדיקת אורך מקסימלי
-    if (value && rule.maxLength && value.length > rule.maxLength) {
-      errors.push(`${field} לא יכול להכיל יותר מ-${rule.maxLength} תווים`);
-    }
-    
-    // בדיקת pattern
-    if (value && rule.pattern && !rule.pattern.test(value)) {
-      errors.push(`${field} אינו בפורמט תקין`);
-    }
-    
-    // בדיקת אימייל
-    if (value && rule.isEmail && !validator.isEmail(value)) {
-      errors.push(`${field} חייב להיות כתובת אימייל תקינה`);
-    }
-  }
-  
-  return errors;
-}

@@ -350,18 +350,10 @@ class TaskAPI {
 // אבטחה: יצירת instance מאובטח
 const api = new TaskAPI();
 
-// אבטחה: בדיקת אימות בטעינת הדף
+// הסר את בדיקת האימות האוטומטית
 document.addEventListener('DOMContentLoaded', () => {
-    const token = localStorage.getItem('authToken');
-    const user = localStorage.getItem('user');
-    
-    // אבטחה: בדיקה אם המשתמש מחובר
-    if (!token || !user) {
-        // נמצאים בדף שדורש אימות אבל אין טוקן
-        if (window.location.pathname !== '/login.html' && window.location.pathname !== '/') {
-            window.location.href = '/login.html';
-        }
-    }
+    // הערה: בדיקת אימות מבוטלת לעת עתה
+    console.log('API Client loaded');
 });
 
 // Update existing functions to use the API
@@ -491,10 +483,10 @@ async function loadTasks() {
 
 // Check authentication on page load
 document.addEventListener('DOMContentLoaded', async () => {
-    const user = localStorage.getItem('user');
-    if (user) {
+    // הסר את בדיקת המשתמש
+    try {
         await loadTasks();
-    } else {
-        window.location.href = '/login.html';
+    } catch (error) {
+        console.error('Error loading tasks:', error);
     }
 });

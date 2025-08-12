@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>כלי חילוץ וניהול משימות מסיכומי ישיבות - גרסה משופרת</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <style>
         * {
@@ -739,6 +738,30 @@
         async function handleFiles(files) {
             showProcessing();
             hideMessages();
+            let totalNewTasks = 0;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                processingMessageElement.textContent = `מעבד קובץ ${i + 1} מתוך ${files.length}: ${file.name}`;
+                try {
+                    // 1. שלח קובץ לשרת לעיבוד
+                    const result = await api.uploadFile(file); // משתמש ב-API Client
+
+                    // 2. השתמש בלוגיקת החילוץ הקיימת שלך על התוצאה
+                    const tasksFromFile = extractTasksFromFileContent(result.html, result.filename, result.text);
+                    
+                    if (tasksFromFile.length > 0) {
+                        // 3. שמור את המשימות החדשות בשרת
+                        await api.createTasks(tasksFromFile);
+                        totalNewTasks += tasksFromFile.length;
+                    }
+                } catch (error) {
+                    showError(`שגיאה בעיבוד ${file.name}: ${error.message}`);
+                }
+            }
+
+            hideProcessing();
+            showSuccess(`${totalNewTasks} משימות חדשות נוספו בהצלחה!`);
+            await loadTasksFromServer();
             document.getElementById('debugSection').style.display = 'none';
             document.getElementById('debugContent').textContent = '';
             
@@ -1245,19 +1268,18 @@
             console.log("All data cleared including localStorage");
         }
 
-        function deleteTask(globalId) {
-            const taskIndex = allExtractedTasks.findIndex(task => task.globalId === globalId);
-            if (taskIndex > -1) {
-                allExtractedTasks.splice(taskIndex, 1);
-                selectedTaskGlobalIds.delete(globalId); 
-                showSuccess("המשימה נמחקה.");
-                identifyAndMarkDuplicates();
-                saveTasksToLocalStorage();
-                updateStatistics();
-                populateFilterOptions();
-                applyFilters();
-            } else {
-                showError("שגיאה: המשימה למחיקה לא נמצאה.");
+        async function deleteTask(globalId) {
+            const taskToDelete = allExtractedTasks.find(t => t.id === globalId);
+            if (!taskToDelete) return;
+
+            if (confirm(`האם למחוק את המשימה?`)) {
+                try {
+                    await api.deleteTask(taskToDelete.id);
+                    showSuccess("המשימה נמחקה.");
+                    await loadTasksFromServer();
+                } catch (error) {
+                    showError(error.message);
+                }
             }
         }
 
@@ -2069,13 +2091,15 @@
         }
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            // הסר בדיקת טוקן כי אין אימות כרגע
+            await loadUserData();
             loadTasksFromLocalStorage();
             hideMessages();
             document.getElementById('debugSection').style.display = 'none';
             document.getElementById('debugContent').textContent = '';
             updateStatistics();
-
+            
             document.getElementById('copyClipboardBtn').addEventListener('click', copyToClipboard);
             document.getElementById('switchToUploadBtn').addEventListener('click', switchToUploadView);
             document.getElementById('clearAllBtn').addEventListener('click', confirmClearAllData);
@@ -2083,8 +2107,30 @@
             document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
             document.getElementById('exportJsonBtn').addEventListener('click', exportToJSON);
             document.getElementById('importJsonBtn').addEventListener('click', () => {
-                document.getElementById('importFileInput').click();
+            document.getElementById('importFileInput').click();
             });
+            async function loadTasksFromServer() {
+                try {
+                    showProcessing();
+                    // שינוי לבקשה פשוטה ללא אימות
+                    const response = await fetch('/api/tasks');
+                    if (!response.ok) throw new Error('שגיאה בטעינת המשימות');
+                    const tasks = await response.json();
+                    allExtractedTasks = tasks;
+                    displayResults(allExtractedTasks);
+                    hideProcessing();
+                } catch (error) {
+                    showError(error.message);
+                    hideProcessing();
+                }
+            }
+            
+            // הוסף פונקציה חסרה
+            async function loadUserData() {
+                // פונקציה פשוטה ללא אימות
+                console.log('User data loaded');
+            }
+            
             document.getElementById('importFileInput').addEventListener('change', importFromJSON);
             document.getElementById('exportIcsBtn').addEventListener('click', exportSelectedOrAllToICS);
 
@@ -2096,5 +2142,7 @@
             document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
         });
     </script>
+<script src="local-db.js"></script>
+<script src="api-client.js"></script>
 </body>
 </html>
