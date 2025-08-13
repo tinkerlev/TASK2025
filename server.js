@@ -1,11 +1,10 @@
-// Task Manager 2025 - Simple Local Server
 require('dotenv').config();
+const path = require('path');
+const fs = require('fs');
 const { exec } = require('child_process');
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
-const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
 const mammoth = require('mammoth');
 const validator = require('validator');
@@ -23,11 +22,9 @@ function readJson(file, fallback) {
         return fallback;
     }
 }
-
 function writeJson(file, data) {
     fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
 }
-
 // Security: Rate limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -36,13 +33,11 @@ const limiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 });
-
 // הגדרות בסיסיות
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(limiter);
 app.disable('x-powered-by');
-
 // Security: File upload configuration
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -58,7 +53,6 @@ const storage = multer.diskStorage({
         cb(null, uniqueName);
     }
 });
-
 const upload = multer({
     storage: storage,
     limits: {
@@ -77,34 +71,27 @@ const upload = multer({
         }
     }
 });
-
 // User model helpers
 function getUsers() {
     return readJson(USERS_FILE, []);
 }
-
 function saveUsers(users) {
     writeJson(USERS_FILE, users);
 }
-
 function getTasks() {
     return readJson(TASKS_FILE, []);
 }
-
 function saveTasks(tasks) {
     writeJson(TASKS_FILE, tasks);
 }
-
 function generateId() {
     return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
 }
-
 // Authentication middleware
 const authenticateToken = (req, res, next) => {
     req.user = { id: 'default-user', username: 'user', role: 'user' };
     next();
 };
-
 // Registration endpoint
 app.post('/api/register', async (req, res) => {
     try {
@@ -134,7 +121,6 @@ app.post('/api/register', async (req, res) => {
         if (users.find(u => u.username === username || u.email === email)) {
             return res.status(400).json({ error: 'שם משתמש או אימייל כבר קיימים' });
         }
-
         const hashed = await bcrypt.hash(password, 12);
         const user = {
             id: generateId(),
@@ -166,26 +152,20 @@ app.post('/api/register', async (req, res) => {
         res.status(500).json({ error: 'שגיאה פנימית בשרת' });
     }
 });
-
-// Login endpoint
 app.post('/api/login', async (req, res) => {
     try {
         const { username, password } = req.body;
-
         if (!username || !password) {
             return res.status(400).json({ error: 'שם משתמש וסיסמה נדרשים' });
         }
-
         let users = getUsers();
         let user = users.find(u => u.username === username);
         if (!user) {
             return res.status(401).json({ error: 'שם משתמש או סיסמה שגויים' });
         }
-
         if (user.lockUntil && new Date(user.lockUntil) > new Date()) {
             return res.status(423).json({ error: 'החשבון נעול זמנית. נסה שוב מאוחר יותר.' });
         }
-
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
             user.loginAttempts = (user.loginAttempts || 0) + 1;
@@ -195,12 +175,10 @@ app.post('/api/login', async (req, res) => {
             saveUsers(users);
             return res.status(401).json({ error: 'שם משתמש או סיסמה שגויים' });
         }
-
         user.loginAttempts = 0;
         user.lockUntil = null;
         user.lastLogin = new Date().toISOString();
         saveUsers(users);
-
         res.json({
             message: 'התחברות הצליחה',
             user: {
@@ -210,13 +188,11 @@ app.post('/api/login', async (req, res) => {
                 role: user.role
             }
         });
-
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ error: 'שגיאה פנימית בשרת' });
     }
 });
-
 // Get all tasks
 app.get('/api/tasks', authenticateToken, (req, res) => {
     try {
@@ -227,7 +203,6 @@ app.get('/api/tasks', authenticateToken, (req, res) => {
         res.status(500).json({ error: 'שגיאה בקבלת המשימות' });
     }
 });
-
 // Get single task
 app.get('/api/tasks/:id', authenticateToken, (req, res) => {
     try {
@@ -239,7 +214,6 @@ app.get('/api/tasks/:id', authenticateToken, (req, res) => {
         res.status(500).json({ error: 'שגיאה בקבלת המשימה' });
     }
 });
-
 // Create single task
 app.post('/api/tasks', authenticateToken, (req, res) => {
     try {
@@ -247,7 +221,6 @@ app.post('/api/tasks', authenticateToken, (req, res) => {
         if (!taskDescription || !section || !responsible) {
             return res.status(400).json({ error: 'שדות חובה חסרים' });
         }
-
         let tasks = getTasks();
         const task = {
             id: generateId(),
@@ -273,7 +246,6 @@ app.post('/api/tasks', authenticateToken, (req, res) => {
         res.status(500).json({ error: 'שגיאה ביצירת המשימה' });
     }
 });
-
 // Create multiple tasks
 app.post('/api/tasks/bulk', authenticateToken, (req, res) => {
     try {
@@ -302,7 +274,6 @@ app.post('/api/tasks/bulk', authenticateToken, (req, res) => {
         res.status(500).json({ error: 'שגיאה ביצירת המשימות' });
     }
 });
-
 // Update task
 app.put('/api/tasks/:id', authenticateToken, (req, res) => {
     try {
@@ -320,7 +291,6 @@ app.put('/api/tasks/:id', authenticateToken, (req, res) => {
         res.status(500).json({ error: 'שגיאה בעדכון המשימה' });
     }
 });
-
 // Delete task
 app.delete('/api/tasks/:id', authenticateToken, (req, res) => {
     try {
@@ -337,17 +307,14 @@ app.delete('/api/tasks/:id', authenticateToken, (req, res) => {
         res.status(500).json({ error: 'שגיאה במחיקת המשימה' });
     }
 });
-
 // File upload endpoint
 app.post('/api/upload', authenticateToken, upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'לא נבחר קובץ' });
-        }
-        
+        }     
         const filePath = req.file.path;
         let result = { value: '', messages: [] };
-        
         if (req.file.mimetype === 'application/pdf') {
             const dataBuffer = fs.readFileSync(filePath);
             const data = await pdf(dataBuffer);
@@ -355,15 +322,12 @@ app.post('/api/upload', authenticateToken, upload.single('file'), async (req, re
         } else {
             result = await mammoth.convertToHtml({ path: filePath });
         }
-        
         fs.unlinkSync(filePath);
-
         res.json({
             html: result.value,
             filename: req.file.originalname,
             warnings: result.messages || []
         });
-
     } catch (error) {
         if (req.file) {
             fs.unlink(req.file.path, (err) => {
@@ -374,7 +338,6 @@ app.post('/api/upload', authenticateToken, upload.single('file'), async (req, re
         res.status(500).json({ error: 'שגיאה בעיבוד הקובץ' });
     }
 });
-
 // Get user statistics
 app.get('/api/stats', authenticateToken, (req, res) => {
     try {
@@ -397,45 +360,28 @@ app.get('/api/stats', authenticateToken, (req, res) => {
         res.status(500).json({ error: 'שגיאה בקבלת הסטטיסטיקות' });
     }
 });
-
-// Serve static files
-app.use(express.static('public'));
-
-// הסר את הנתיב הכללי או החלף אותו
-// app.get('*', (req, res) => {
-//     res.sendFile(path.join(__dirname, 'public', 'index.html'));
-// });
-
-// לחלופין, השתמש בזה במקום:
-app.get('/', (req, res) => {
-    const indexPath = path.join(__dirname, 'public', 'index.html');
-    if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
-    } else {
-        res.json({ 
-            message: 'Task Manager API Server', 
-            version: '2025.1',
-            endpoints: ['/api/tasks', '/api/register', '/api/login', '/api/upload', '/api/stats']
-        });
-    }
+const staticDirs = [path.join(__dirname, 'public'), __dirname];
+staticDirs.forEach(dir => {
+  if (fs.existsSync(dir)) app.use(express.static(dir));
 });
-
-// נתיבי API נוספים יכולים לבוא כאן
+app.get('/', (req, res) => {
+  const candidate = [
+    path.join(__dirname, 'public', 'index.html'),
+    path.join(__dirname, 'index.html'),
+  ].find(p => fs.existsSync(p));
+  if (candidate) return res.sendFile(candidate);
+  res.status(200).json({ message: 'Task Manager API Server', version: '2025.1' });
+});
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
-
-// 404 handler
 app.use((req, res) => {
     res.status(404).json({ error: 'נתיב לא נמצא' });
 });
-
-// Error handler
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({ error: 'שגיאה פנימית בשרת' });
 });
-
 app.listen(PORT, '127.0.0.1', () => {
     const url = `http://127.0.0.1:${PORT}`;
     console.log(`Task Manager server running on ${url}`);
@@ -448,7 +394,6 @@ app.listen(PORT, '127.0.0.1', () => {
     } else {
         command = `xdg-open ${url}`;
     }
-
     exec(command, (error) => {
         if (error) {
             console.error(`Failed to open browser automatically: ${error.message}`);

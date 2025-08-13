@@ -6,6 +6,8 @@ node_modules/
 dist/
 build/
 .cache/
-task-manager.exe
+/task-manager.exe
 launcher.bat
 *.exe
+/Output/
+/uploads/

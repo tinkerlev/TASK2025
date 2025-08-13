@@ -169,15 +169,11 @@
             <h1>כלי ניהול משימות</h1>
             <p>מערכת מאובטחת לניהול משימות</p>
         </div>
-
         <div class="security-notice">
             🛡️ המערכת מוגנת בהצפנה מתקדמת ואימות דו-שלבי
         </div>
-
         <div class="error-message" id="errorMessage"></div>
         <div class="success-message" id="successMessage"></div>
-
-        <!-- Login Form -->
         <div class="form-container active" id="loginForm">
             <form id="loginFormElement">
                 <div class="form-group">
@@ -192,8 +188,6 @@
             </form>
             <p>אין לך חשבון? <span class="toggle-form" onclick="toggleForm()">הירשם כאן</span></p>
         </div>
-
-        <!-- Register Form -->
         <div class="form-container" id="registerForm">
             <form id="registerFormElement">
                 <div class="form-group">
@@ -219,7 +213,6 @@
             <p>יש לך חשבון? <span class="toggle-form" onclick="toggleForm()">התחבר כאן</span></p>
         </div>
     </div>
-
     <script>
         // Security: Prevent XSS and validate inputs
         function sanitizeInput(input) {
@@ -227,71 +220,55 @@
             div.textContent = input;
             return div.innerHTML;
         }
-
         function showError(message) {
-            const errorEl = document.getElementById('errorMessage');
-            errorEl.textContent = sanitizeInput(message);
-            errorEl.style.display = 'block';
-            document.getElementById('successMessage').style.display = 'none';
+            const el = document.getElementById('errorMessage');
+            el.textContent = message;
+            el.style.display = 'block';
         }
 
         function showSuccess(message) {
-            const successEl = document.getElementById('successMessage');
-            successEl.textContent = sanitizeInput(message);
-            successEl.style.display = 'block';
-            document.getElementById('errorMessage').style.display = 'none';
+            const el = document.getElementById('successMessage');
+            el.textContent = message;
+            el.style.display = 'block';
         }
-
         function hideMessages() {
+            document.getElementById('loginForm').classList.toggle('active');
+            document.getElementById('registerForm').classList.toggle('active');
             document.getElementById('errorMessage').style.display = 'none';
-            document.getElementById('successMessage').style.display = 'none';
         }
-
         function toggleForm() {
-            const loginForm = document.getElementById('loginForm');
-            const registerForm = document.getElementById('registerForm');
-            
-            loginForm.classList.toggle('active');
-            registerForm.classList.toggle('active');
-            hideMessages();
+            document.getElementById('loginForm').classList.toggle('active');
+            document.getElementById('registerForm').classList.toggle('active');
+            document.getElementById('errorMessage').style.display = 'none';
         }
-
         // Security: Validate input on client side
         function validateUsername(username) {
             const pattern = /^[a-zA-Z0-9_]+$/;
             return username.length >= 3 && username.length <= 30 && pattern.test(username);
         }
-
         function validateEmail(email) {
             const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             return pattern.test(email);
         }
-
         function validatePassword(password) {
             return password.length >= 6;
         }
-
         // Security: Rate limiting on client side
         let lastRequestTime = 0;
         function checkRateLimit() {
             const now = Date.now();
-            if (now - lastRequestTime < 1000) { // 1 second between requests
+            if (now - lastRequestTime < 1000) {
                 showError('יותר מדי בקשות. אנא המתן שנייה.');
                 return false;
             }
             lastRequestTime = now;
             return true;
         }
-
-        // Login handler
         document.getElementById('loginFormElement').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             if (!checkRateLimit()) return;
-            
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value;
-            
             // Security: Client-side validation
             if (!validateUsername(username)) {
                 showError('שם משתמש לא תקין');
@@ -302,7 +279,6 @@
                 showError('סיסמה חייבת להכיל לפחות 6 תווים');
                 return;
             }
-            
             const loginButton = document.getElementById('loginButton');
             loginButton.disabled = true;
             loginButton.textContent = 'מתחבר...';
@@ -322,12 +298,9 @@
                     // Security: Store token securely
                     localStorage.setItem('authToken', data.token);
                     localStorage.setItem('user', JSON.stringify(data.user));
-                    
                     showSuccess('התחברות הצליחה! מעביר לדף הראשי...');
-                    
                     // Security: Clear form data
                     document.getElementById('loginFormElement').reset();
-                    
                     setTimeout(() => {
                         window.location.href = '/index.html';
                     }, 1500);
@@ -348,18 +321,15 @@
             e.preventDefault();
             
             if (!checkRateLimit()) return;
-            
             const username = document.getElementById('registerUsername').value.trim();
             const email = document.getElementById('registerEmail').value.trim();
             const password = document.getElementById('registerPassword').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
-            
             // Security: Client-side validation
             if (!validateUsername(username)) {
                 showError('שם משתמש חייב להכיל 3-30 תווים (אותיות אנגליות, מספרים וקו תחתון בלבד)');
                 return;
             }
-            
             if (!validateEmail(email)) {
                 showError('כתובת אימייל לא תקינה');
                 return;
@@ -369,7 +339,6 @@
                 showError('סיסמה חייבת להכיל לפחות 6 תווים');
                 return;
             }
-            
             if (password !== confirmPassword) {
                 showError('סיסמאות אינן תואמות');
                 return;
@@ -392,14 +361,11 @@
                 
                 if (response.ok) {
                     showSuccess('הרשמה הצליחה! מעביר לדף הראשי...');
-                    
                     // Security: Store token securely
                     localStorage.setItem('authToken', data.token);
                     localStorage.setItem('user', JSON.stringify(data.user));
-                    
                     // Security: Clear form data
                     document.getElementById('registerFormElement').reset();
-                    
                     setTimeout(() => {
                         window.location.href = '/index.html';
                     }, 1500);
@@ -438,11 +404,9 @@
                     // Network error, keep login page
                 });
             }
-        });
-
+        })
         // Security: Clear sensitive data on page unload
         window.addEventListener('beforeunload', () => {
-            // Clear any temporary data
             document.getElementById('loginPassword').value = '';
             document.getElementById('registerPassword').value = '';
             document.getElementById('confirmPassword').value = '';
